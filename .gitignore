@@ -36,7 +36,10 @@ htmlcov/
 coverage/
 .pytest_cache/
 
-# Local-only working notes and design references (not published)
+# Local-only working notes and design references (not published).
+# docs/ itself IS published (architecture overview, ADRs, etc.) — only
+# these specific process-audit files stay local.
 CLAUDE.md
-/docs/
+/docs/repository-audit.md
+/docs/design-reference-inventory.md
 /design-reference/

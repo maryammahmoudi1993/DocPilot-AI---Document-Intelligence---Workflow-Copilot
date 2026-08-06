@@ -1,0 +1,67 @@
+# Local development environment. Not used for production deployment.
+#
+# Frontend is intentionally NOT containerized here — `npm run dev` (Vite's
+# dev server) already gives fast, reliable local iteration, and adding a
+# container wouldn't improve reproducibility enough to justify the extra
+# moving part yet. Revisit if/when a production-parity frontend image is
+# actually needed (e.g. for a deployment dry run).
+#
+# MinIO (S3-compatible object storage) is intentionally deferred to the
+# document-storage phase, where the storage abstraction it backs is
+# actually implemented — adding it now would mean an unused service with
+# nothing to configure against it.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-docpilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docpilot}
+      POSTGRES_DB: ${POSTGRES_DB:-docpilot}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-docpilot} -d ${POSTGRES_DB:-docpilot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-local-development-only-key}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DATABASE_URL: postgres://${POSTGRES_USER:-docpilot}:${POSTGRES_PASSWORD:-docpilot}@postgres:5432/${POSTGRES_DB:-docpilot}
+      REDIS_URL: redis://redis:6379/0
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
