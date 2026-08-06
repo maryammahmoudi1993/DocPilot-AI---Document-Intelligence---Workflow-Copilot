@@ -15,6 +15,22 @@ npm install
 cp .env.example .env   # then fill in real values
 ```
 
+### Windows: `npm run <script>` fails with `'Workflow' is not recognized...`
+
+This happens only if your checkout path contains an unescaped `&` (for
+example a parent folder literally named `...Intelligence & Workflow...`) —
+`npm.cmd`'s batch-file argument parsing splits the command at the `&`.
+Fix it locally, once, without committing anything:
+
+```bash
+npm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"
+```
+
+or create an untracked `frontend/.npmrc` with `script-shell=<path to
+bash.exe>` (already gitignored — see root `.gitignore` — because the path
+is machine-specific and would break Linux/Mac/CI if committed). Not needed
+on macOS/Linux or in CI.
+
 ## Common commands
 
 ```bash
