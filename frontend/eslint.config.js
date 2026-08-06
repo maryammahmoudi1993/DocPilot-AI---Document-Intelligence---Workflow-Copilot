@@ -27,5 +27,16 @@ export default tseslint.config(
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
     },
   },
+  {
+    // shadcn/ui-style convention: a component file may also export its cva
+    // variant map (e.g. buttonVariants) or a colocated hook (e.g.
+    // useToast) — Fast Refresh still works for the component export,
+    // this rule just can't tell that from a same-file non-component
+    // export.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
   prettier,
 );
