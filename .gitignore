@@ -1,0 +1,42 @@
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# Logs & OS
+*.log
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# Test / coverage artifacts
+.coverage
+htmlcov/
+coverage/
+.pytest_cache/
+
+# Local-only working notes and design references (not published)
+CLAUDE.md
+/docs/
+/design-reference/
