@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function Home() {
   return (
     <main className="min-h-screen bg-[#EEECF6] flex items-center justify-center">
