@@ -1,0 +1,82 @@
+[project]
+name = "docpilot-backend"
+version = "0.1.0"
+description = "DocPilot AI backend — Django/DRF modular monolith."
+requires-python = ">=3.12,<3.13"
+readme = "README.md"
+
+# Runtime dependencies. Every entry is pinned to an exact version for
+# reproducible installs (see docs' repository-audit note on dependency
+# management — no lockfile tool such as Poetry/PDM is introduced because
+# exact pins already give reproducibility without adding another tool).
+dependencies = [
+  # Web framework and API layer.
+  "Django==5.2.17",
+  "djangorestframework==3.17.2",
+  # OpenAPI schema generation (required tooling per project tech direction).
+  "drf-spectacular==0.30.0",
+  # Typed environment-variable parsing (DATABASE_URL, REDIS_URL, SENTRY_DSN, ...)
+  # so settings stay environment-based without hand-rolled os.environ parsing.
+  "django-environ==0.14.0",
+  # PostgreSQL driver (psycopg 3). Binary extra avoids requiring local
+  # PostgreSQL headers/build toolchain for development.
+  "psycopg[binary]==3.3.4",
+  # Redis client — used by the readiness check now, and will become the
+  # Celery broker/result-backend client in the async-processing phase.
+  "redis==8.1.0",
+  # Sentry error reporting. Required by the project's infrastructure
+  # direction ("Sentry-ready error reporting"). No-op at runtime unless
+  # SENTRY_DSN is set, so it is safe to wire in now.
+  "sentry-sdk==2.66.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.1.1",
+  "pytest-django==4.13.0",
+  "pytest-cov==7.1.0",
+  "factory_boy==3.3.3",
+  "ruff==0.16.1",
+  "mypy==2.3.0",
+  "django-stubs==6.0.7",
+  "djangorestframework-stubs==3.17.1",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+testpaths = ["tests", "apps"]
+addopts = "--reuse-db"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "**/migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+strict_optional = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+exclude = ["migrations/", "\\.venv/"]
+
+[[tool.mypy.overrides]]
+module = "*.migrations.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+# django-environ ships no type stubs / py.typed marker.
+module = "environ.*"
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.test"
+
+[tool.coverage.run]
+source = ["apps", "common", "config"]
+omit = ["*/migrations/*", "*/tests/*"]
