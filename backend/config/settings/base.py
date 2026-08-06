@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
@@ -47,6 +48,8 @@ AUTH_USER_MODEL = "accounts.User"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "common.middleware.CorrelationIdMiddleware",
+    # Must come before CommonMiddleware per django-cors-headers' own docs.
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -86,6 +89,15 @@ DATABASES = {
         default="postgres://docpilot:docpilot@localhost:5432/docpilot",
     ),
 }
+
+# --- CORS -----------------------------------------------------------------
+# The frontend runs on a different origin in dev (localhost:3000 vs the
+# backend's localhost:8000) and must send/receive the httpOnly
+# refresh-token cookie, which requires explicit allow-listing — CORS
+# defaults to denying credentialed cross-origin requests. See
+# docs/adr/0003-cors-configuration.md.
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])
+CORS_ALLOW_CREDENTIALS = True
 
 # --- Redis ----------------------------------------------------------------
 # Connection settings only in this phase — no Celery app/tasks are defined

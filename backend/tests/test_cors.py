@@ -2,6 +2,7 @@
 cross-origin with credentials (the refresh-token cookie) — see
 docs/adr/0003-cors-configuration.md.
 """
+
 from django.urls import reverse
 
 
