@@ -72,6 +72,42 @@ frontend/
 └── package.json       # Dependencies and scripts
 ```
 
+## Design system
+
+`src/components/ui/` — reusable, unstyled-business-logic primitives (Button,
+Input, Select, Tabs, Dialog, Drawer, Toast, StatusBadge, ConfidenceBadge,
+MetricCard, EmptyState, ErrorState, Skeleton, DataTable shell, FilterBar,
+ConfirmationDialog). `src/components/layout/` — the shared application
+shell (AppShell, Sidebar, Header, PageHeader) every `/app/*` route renders
+through; no page re-implements sidebar/header markup.
+
+Design tokens (colors, radii, shadows, motion durations, z-index) live in
+`tailwind.config.js`'s `theme.extend` and are consumed as Tailwind
+utility classes (`bg-primary`, `rounded-lg`, `shadow-md`, `duration-fast`,
+`z-modal`, …) rather than inline styles or repeated hex values.
+
+Run `npm run dev` and visit `/dev/design-system` for a live reference of
+every component (dev-only route — stripped from production builds via an
+`import.meta.env.DEV` guard in `App.tsx`).
+
+Built on [Radix UI](https://www.radix-ui.com/) primitives for Dialog,
+Drawer, Select, Tabs, and Toast — they provide correct keyboard
+navigation and ARIA roles out of the box. One caveat found while building
+this: Radix's own focus-*restoration* on dialog close was unreliable
+under jsdom (worked in real browsers, not in the Vitest test
+environment) regardless of how the dialog was closed, so `Dialog`/`Drawer`
+re-implement it explicitly (see the comment in `Dialog.tsx`) rather than
+relying on it silently.
+
+**Tailwind v4 gotcha**: a JS `tailwind.config.js` is ignored by Tailwind
+v4 unless referenced via `@config "../tailwind.config.js";` in the CSS
+entry point (`src/index.css`) — v4's default is a CSS-native `@theme`
+block instead. Without it, every custom-token utility (and, separately,
+every responsive `sm:`/`md:`/`lg:` variant — which needed `@import
+"tailwindcss";` rather than the legacy `@tailwind base/components/utilities;`
+directives) silently compiled to nothing. If you ever see a custom color
+or breakpoint variant have no visual effect, check both of these first.
+
 ## Testing
 
 ### Unit Tests (Vitest)
