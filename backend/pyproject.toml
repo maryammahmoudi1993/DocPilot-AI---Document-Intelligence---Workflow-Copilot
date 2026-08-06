@@ -31,6 +31,10 @@ dependencies = [
   # JWT authentication (access + refresh) for the SPA frontend, including
   # refresh-token blacklisting on logout (token_blacklist app).
   "djangorestframework-simplejwt==5.5.1",
+  # CORS: the frontend (a different origin in dev — localhost:3000 vs
+  # localhost:8000) needs explicit permission to send/receive the
+  # httpOnly refresh-token cookie cross-origin.
+  "django-cors-headers==4.9.0",
 ]
 
 [tool.setuptools.packages.find]
