@@ -1,0 +1,22 @@
+"""Local development settings.
+
+Reads `backend/.env` (gitignored, copy from `.env.example`) if present, then
+falls back to the defaults in `base.py`.
+"""
+
+import environ
+
+from .base import *  # noqa: F403
+from .base import BASE_DIR, env
+from .base import SECRET_KEY as _BASE_SECRET_KEY
+
+environ.Env.read_env(str(BASE_DIR / ".env"))
+
+DEBUG = env.bool("DJANGO_DEBUG", default=True)
+
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+
+# Convenience-only fallback so `manage.py check` works out of the box in a
+# fresh checkout. Never used outside local development: production.py
+# requires DJANGO_SECRET_KEY to be set and refuses to start otherwise.
+SECRET_KEY = _BASE_SECRET_KEY or "django-insecure-local-development-only-key"  # noqa: S105
