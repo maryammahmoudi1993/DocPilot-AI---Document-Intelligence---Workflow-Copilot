@@ -1,13 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+/* Tailwind v4 ignores tailwind.config.js's theme.extend (colors, radii,
+   shadows, z-index, custom breakpoints — all of it) unless it's loaded
+   explicitly via @config; v4's default is a CSS-native @theme block
+   instead of a JS config file. Without this line every custom-token
+   utility (bg-primary, z-modal, rounded-lg's custom value, etc.)
+   silently compiled to nothing. */
+@config "../tailwind.config.js";
 
 :root {
   font-family: 'Plus Jakarta Sans', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
   color: #232235;
   background-color: #EEECF6;
 
@@ -19,8 +24,23 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Global reduced-motion support: respected once here instead of relying
+   on every animated component to remember `motion-reduce:` per usage. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
