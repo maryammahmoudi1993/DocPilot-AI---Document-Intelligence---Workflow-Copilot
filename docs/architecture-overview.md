@@ -40,7 +40,9 @@ Each bounded piece of the product is its own Django app under
 | App | Responsibility | Status |
 |---|---|---|
 | `apps.health` | Liveness/readiness probes | Implemented (Phase 0B) |
-| `apps.accounts` / workspaces | Auth, workspace isolation, RBAC | Planned (Phase 2) |
+| `apps.accounts` | Custom user model, JWT auth (login/refresh/logout/session) | Implemented (Phase 2A, backend only) |
+| `apps.workspaces` | Workspace isolation, membership, RBAC | Implemented (Phase 2A, backend only) |
+| `apps.audit` | Immutable audit-event log | Implemented (Phase 2A) |
 | `apps.documents` | Upload, storage, parsing/OCR orchestration | Planned (Phase 3–4) |
 | `apps.extraction` | Structured extraction, confidence, validation, review | Planned (Phase 5) |
 | `apps.assistant` | Semantic indexing, RAG Q&A with citations | Planned (Phase 6) |
@@ -135,9 +137,10 @@ use it.
 
 ## What this document intentionally does not cover yet
 
-Authentication/authorization, workspace isolation, the extraction
-pipeline, the RAG assistant, the workflow engine, and analytics are all
-designed in their respective phase prompts but not implemented — this
-document describes verified, implemented reality plus the module map
-those phases will fill in, not a forward-looking design spec for all of
-them.
+Authentication/authorization and workspace isolation are implemented on
+the backend (Phase 2A) but have no frontend UI yet (Phase 2B). The
+extraction pipeline, the RAG assistant, the workflow engine, and
+analytics are all designed in their respective phase prompts but not
+implemented — this document describes verified, implemented reality plus
+the module map those phases will fill in, not a forward-looking design
+spec for all of them.

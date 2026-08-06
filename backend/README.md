@@ -86,6 +86,60 @@ Every DRF-routed error response uses one stable envelope:
 `{"error": {"code": "internal_error", ...}}` with a generic message; the
 real exception is logged, never returned to the client.
 
+## Authentication, workspaces, and RBAC
+
+**Login is by email**, not a separate username (`apps.accounts.User`,
+`USERNAME_FIELD = "email"` — see `docs/adr/0002-custom-user-model.md`).
+
+Auth is JWT (`djangorestframework-simplejwt`):
+
+| Endpoint | Behavior |
+|---|---|
+| `POST /api/auth/login/` | `{email, password}` → `{access, user}`; sets the refresh token as an **httpOnly** cookie (never readable by frontend JS — see the project rule against long-lived secrets in insecure browser storage). Throttled (`10/min`). |
+| `POST /api/auth/refresh/` | Reads the refresh cookie (never the request body), rotates it (old one is blacklisted immediately — `ROTATE_REFRESH_TOKENS` + `BLACKLIST_AFTER_ROTATION`), returns a new `access`. Throttled (`30/min`). |
+| `POST /api/auth/logout/` | Blacklists the current refresh token, clears the cookie. |
+| `GET /api/auth/session/` | Current user + every workspace they belong to (with their role in each) + their active-workspace pointer. Frontend session-bootstrap endpoint. |
+| `PATCH /api/auth/active-workspace/` | Sets which workspace the frontend should preselect. **Not an authorization mechanism** — see below. |
+
+Access tokens are short-lived (15 min) and meant for the `Authorization:
+Bearer <token>` header, kept in memory by the frontend — never
+`localStorage` (XSS-exfiltrable). Refresh tokens (7 days) live only in
+the httpOnly cookie.
+
+### Workspaces and roles
+
+`apps.workspaces.Workspace` + `WorkspaceMembership` (one row per
+user-per-workspace, with a `role`). Five roles: **Owner**, **Admin**,
+**Finance Manager**, **Reviewer**, **Viewer**. Only Owner/Admin can
+manage membership (`apps.workspaces.models.MEMBERSHIP_MANAGER_ROLES`);
+every member can read the member list. Ownership changes hands only via
+`POST /api/workspaces/<id>/transfer-ownership/` (owner-only,
+transactional — the old owner becomes Admin, never left roleless) —
+`PATCH .../members/<id>/` explicitly refuses to set `role: owner`
+directly.
+
+**Every workspace-scoped endpoint re-derives the caller's role from a
+real `WorkspaceMembership` row on every single request** (see
+`apps/workspaces/permissions.py` and `apps/workspaces/selectors.py`) —
+never from a client-supplied header, cookie, or the user's
+`active_workspace` convenience pointer. That pointer exists purely so
+the frontend knows which workspace to preselect on load; forging it
+changes nothing about what a request is actually authorized to touch
+(and `set_active_workspace` itself rejects setting it to a workspace the
+caller isn't a member of, in `apps/workspaces/services.py`).
+
+### Demo data
+
+```bash
+python manage.py seed_demo_data
+```
+
+Idempotent. Creates `Demo Workspace` and one user per role
+(`owner@demo.docpilot.ai`, `admin@…`, `finance@…`, `reviewer@…`,
+`viewer@…`), all with the same password the command prints to stdout —
+a portfolio-demo credential, not a real secret, safe to have in this
+README.
+
 ## Logging
 
 Structured (one JSON object per line), tagged with a per-request

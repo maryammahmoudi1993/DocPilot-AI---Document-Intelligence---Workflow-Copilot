@@ -152,7 +152,11 @@ relying on this for a live demo.
   structured logging, error envelope). Done.
 - **Phase 0C** — frontend foundation (Vite/React/TS, routing, quality
   tooling). Done.
-- **Phase 0D** — this phase: Docker Compose, CI, root docs, ADR.
-- No business features (auth, documents, extraction, RAG, workflows,
-  analytics) are implemented yet — see `docs/architecture-overview.md`
+- **Phase 0D** — Docker Compose, CI, root docs, ADR. Done.
+- **Phase 1** — frontend design system, shared app shell, route
+  placeholders. Done.
+- **Phase 2A** — this phase: backend authentication (JWT), workspaces,
+  membership, RBAC, audit trail.
+- No frontend auth UI, documents, extraction, RAG, workflows, or
+  analytics are implemented yet — see `docs/architecture-overview.md`
   for the module map and what's planned per phase.
