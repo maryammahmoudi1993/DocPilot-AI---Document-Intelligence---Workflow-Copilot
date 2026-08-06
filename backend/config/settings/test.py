@@ -14,7 +14,7 @@ from .base import *  # noqa: F403
 
 DEBUG = False
 
-SECRET_KEY = "django-insecure-test-only-key"  # noqa: S105
+SECRET_KEY = "django-insecure-test-only-key-at-least-32-bytes-long"  # noqa: S105
 
 ALLOWED_HOSTS = ["testserver"]
 
@@ -27,6 +27,12 @@ DATABASES = {
 
 # Fast password hashing in tests — never used outside the test settings.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# The real API only registers JSONParser (no multipart/form parsing — see
+# base.py), but DRF's test client defaults its request bodies to
+# multipart unless told otherwise, which the API would then reject with
+# 415. Every real request is JSON, so tests should default to that too.
+REST_FRAMEWORK = {**REST_FRAMEWORK, "TEST_REQUEST_DEFAULT_FORMAT": "json"}  # noqa: F405
 
 SENTRY_DSN = ""
 

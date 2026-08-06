@@ -7,6 +7,7 @@ ADR that supersedes it and says so, rather than editing history.
 | # | Title | Status |
 |---|---|---|
 | [0001](0001-modular-monolith.md) | Modular monolith, not microservices | Accepted |
+| [0002](0002-custom-user-model.md) | Custom user model, introduced now | Accepted |
 
 ## Template
 

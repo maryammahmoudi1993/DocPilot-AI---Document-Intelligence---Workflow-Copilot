@@ -28,7 +28,18 @@ dependencies = [
   # direction ("Sentry-ready error reporting"). No-op at runtime unless
   # SENTRY_DSN is set, so it is safe to wire in now.
   "sentry-sdk==2.66.1",
+  # JWT authentication (access + refresh) for the SPA frontend, including
+  # refresh-token blacklisting on logout (token_blacklist app).
+  "djangorestframework-simplejwt==5.5.1",
 ]
+
+[tool.setuptools.packages.find]
+# Explicit include: this "package" is really just the app's own source
+# tree (apps/, common/, config/), not a distributable library — without
+# this, setuptools' automatic flat-layout discovery refuses to guess
+# which of several top-level directories (apps, common, config, tests)
+# is "the" package.
+include = ["apps*", "common*", "config*"]
 
 [project.optional-dependencies]
 dev = [
