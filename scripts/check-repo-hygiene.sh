@@ -47,7 +47,9 @@ else
 fi
 
 secret_like_regex='(^|/)\.env($|\.[^.]+$)|\.pem$|\.key$|(^|/)id_rsa$|credentials\.json$'
-tracked_secret_hits="$(git ls-files | grep -E "$secret_like_regex" || true)"
+# .env.example (and similarly named templates) are meant to be committed —
+# they document required variable names, not real values.
+tracked_secret_hits="$(git ls-files | grep -E "$secret_like_regex" | grep -vE '\.env\.example$' || true)"
 if [[ -n "$tracked_secret_hits" ]]; then
   echo "FAIL: secret-like files are tracked by git:" >&2
   echo "$tracked_secret_hits" >&2
