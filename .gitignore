@@ -20,6 +20,17 @@ node_modules/
 dist/
 build/
 .vite/
+playwright-report/
+test-results/
+# tsc -b's build-info cache and its emitted JS/.d.ts for the (composite,
+# emit-required) node tsconfig project — see frontend/tsconfig.node.json.
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/vitest.config.js
+frontend/vitest.config.d.ts
+# Local machine-specific npm workaround (hardcoded path) — see frontend/README.md.
+frontend/.npmrc
 
 # Logs & OS
 *.log
