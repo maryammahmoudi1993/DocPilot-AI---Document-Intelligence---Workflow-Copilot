@@ -1,0 +1,93 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-ci.yml"
+
+defaults:
+  run:
+    working-directory: backend
+
+env:
+  DJANGO_SECRET_KEY: ci-only-secret-key
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+  # manage.py check / makemigrations --check / spectacular run against a
+  # real PostgreSQL service container (matching the production/local
+  # target) — unlike `pytest`, which uses the documented SQLite test
+  # settings (see backend/config/settings/test.py).
+  DATABASE_URL: postgres://docpilot:docpilot@localhost:5432/docpilot
+  REDIS_URL: redis://localhost:6379/0
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: docpilot
+          POSTGRES_PASSWORD: docpilot
+          POSTGRES_DB: docpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U docpilot -d docpilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: ruff check
+        run: ruff check .
+
+      - name: ruff format --check
+        run: ruff format --check .
+
+      - name: mypy
+        run: mypy .
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+
+      - name: Django system checks
+        run: python manage.py check
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.local
+
+      - name: makemigrations --check
+        run: python manage.py makemigrations --check --dry-run
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.local
+
+      - name: pytest
+        run: pytest --cov --cov-report=term-missing
+
+      - name: OpenAPI schema generation
+        run: python manage.py spectacular --file /tmp/docpilot-schema.yaml --validate
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.local
