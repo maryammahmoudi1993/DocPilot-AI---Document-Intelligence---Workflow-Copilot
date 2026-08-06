@@ -15,6 +15,7 @@ generic `internal_error`.
 
 import logging
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import exceptions as drf_exceptions
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_default_exception_handler
@@ -42,7 +43,21 @@ def _stable_code_for(exc: Exception) -> str:
     return "error"
 
 
+def _convert_django_validation_error(exc: DjangoValidationError) -> drf_exceptions.ValidationError:
+    """DRF's default handler auto-converts Django's PermissionDenied and
+    Http404 (see rest_framework.views.exception_handler) but NOT Django's
+    ValidationError — that one is easy to raise from a service layer that
+    intentionally doesn't import DRF, so it's converted explicitly here
+    rather than 500ing."""
+    if hasattr(exc, "message_dict"):
+        return drf_exceptions.ValidationError(exc.message_dict)
+    return drf_exceptions.ValidationError(exc.messages)
+
+
 def stable_exception_handler(exc: Exception, context: dict) -> Response | None:
+    if isinstance(exc, DjangoValidationError):
+        exc = _convert_django_validation_error(exc)
+
     response = drf_default_exception_handler(exc, context)
 
     if response is None:

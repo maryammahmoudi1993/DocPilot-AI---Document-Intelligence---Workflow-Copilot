@@ -7,6 +7,7 @@ URLs) is read from the process environment via `django-environ` — nothing
 environment-specific is hardcoded here.
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -23,15 +24,25 @@ SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 INSTALLED_APPS = [
+    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "apps.health",
+    "apps.accounts",
+    "apps.workspaces",
+    "apps.audit",
 ]
+
+# Custom user model, defined before any migration has ever been applied to
+# a real database in this project (see docs/adr/0002-custom-user-model.md)
+# — the safe time to introduce one is before the first `migrate`, not after.
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -105,6 +116,35 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "common.exceptions.stable_exception_handler",
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        # Deliberately tight — authentication endpoints are the highest-value
+        # brute-force target in the whole API.
+        "auth-login": "10/min",
+        "auth-refresh": "30/min",
+    },
+}
+
+# Access tokens are short-lived and meant for the Authorization header
+# (in-memory frontend storage only — see frontend auth phase). Refresh
+# tokens are longer-lived, rotated on every use, and blacklisted on
+# rotation/logout (token_blacklist app) so a stolen refresh token has a
+# bounded window of usefulness even if never explicitly revoked.
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 SPECTACULAR_SETTINGS = {
