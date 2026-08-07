@@ -140,6 +140,41 @@ Idempotent. Creates `Demo Workspace` and one user per role
 a portfolio-demo credential, not a real secret, safe to have in this
 README.
 
+## Documents and storage
+
+`apps.documents` manages workspace-scoped file uploads on top of an
+S3-compatible object store (MinIO locally, real S3 in deployment — see
+`docs/adr/0004-storage-abstraction.md`). Files are never public; the
+only way to read one back is a short-lived signed URL.
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /api/workspaces/<id>/documents/` | List, filtered (`status`, `content_type`), searched (`search`, by filename), sorted (`ordering`), paginated (`page`, `page_size`). |
+| `POST /api/workspaces/<id>/documents/` | Upload (`multipart/form-data`, field `file`). Validates extension, size, declared MIME type, and file-content signature (magic bytes) before storing; rejects duplicates by SHA-256 within the workspace. |
+| `GET /api/workspaces/<id>/documents/<doc_id>/` | Detail, including a freshly-generated signed `download_url`. |
+| `DELETE /api/workspaces/<id>/documents/<doc_id>/` | Deletes the DB row and the underlying storage object (storage delete only happens after the DB transaction commits). |
+| `POST /api/workspaces/<id>/documents/<doc_id>/archive/` | Marks a document archived (soft, reversible in the data model; not currently exposed as an "unarchive" endpoint). |
+| `POST /api/workspaces/<id>/documents/bulk-archive/` | `{document_ids: [...]}` — all-or-nothing: rejects the whole request if any id doesn't resolve to a document in this workspace, before archiving any of them. |
+| `POST /api/workspaces/<id>/documents/bulk-delete/` | Same all-or-nothing validation, for delete. |
+
+All document endpoints require workspace membership
+(`apps.workspaces.permissions.IsWorkspaceMember`) and are scoped by
+`workspace_id` in the URL — a document ID from another workspace 404s
+rather than leaking existence (IDOR protection). Every
+create/archive/delete is recorded as an audit event
+(`apps.audit`).
+
+Supported file types: PDF, PNG, JPEG, DOCX, XLSX, CSV, TXT
+(`apps/documents/validation.py`). Max upload size and signed-URL expiry
+are configurable via `DOCUMENT_MAX_UPLOAD_SIZE_BYTES` and
+`DOCUMENT_SIGNED_URL_EXPIRY_SECONDS`.
+
+Running locally via `docker compose up` starts a MinIO container and a
+one-shot `minio-init` service that creates the bucket
+(`DOCUMENT_STORAGE_BUCKET`) on startup. Running the backend natively
+instead requires a MinIO (or real S3) instance reachable at
+`DOCUMENT_STORAGE_ENDPOINT_URL` — see `backend/.env.example`.
+
 ## Logging
 
 Structured (one JSON object per line), tagged with a per-request
