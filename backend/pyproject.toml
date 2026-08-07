@@ -35,6 +35,13 @@ dependencies = [
   # localhost:8000) needs explicit permission to send/receive the
   # httpOnly refresh-token cookie cross-origin.
   "django-cors-headers==4.9.0",
+  # S3-compatible object storage client (MinIO locally, S3 in
+  # deployment) — the storage abstraction's only concrete backend.
+  "boto3==1.43.66",
+  # Declarative filtering/ordering for the document list endpoint
+  # (status/content-type filters, filename search, sort by
+  # created_at/size/filename) instead of hand-rolled queryset branching.
+  "django-filter==26.1",
 ]
 
 [tool.setuptools.packages.find]
@@ -87,6 +94,11 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 # django-environ ships no type stubs / py.typed marker.
 module = "environ.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# boto3/botocore and django-filter ship no type stubs / py.typed marker.
+module = ["boto3.*", "botocore.*", "django_filters.*"]
 ignore_missing_imports = true
 
 [tool.django-stubs]

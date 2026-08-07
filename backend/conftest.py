@@ -16,3 +16,16 @@ def _clear_cache():
     cache.clear()
     yield
     cache.clear()
+
+
+@pytest.fixture
+def fake_storage(monkeypatch):
+    """Patches apps.documents.services.get_storage_backend so any
+    document test — including view-level tests that never inject a
+    backend themselves — uses an in-memory fake instead of trying to
+    reach real S3/MinIO."""
+    from apps.documents.tests.fakes import FakeStorageBackend
+
+    backend = FakeStorageBackend()
+    monkeypatch.setattr("apps.documents.services.get_storage_backend", lambda: backend)
+    return backend

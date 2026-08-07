@@ -5,11 +5,6 @@
 # container wouldn't improve reproducibility enough to justify the extra
 # moving part yet. Revisit if/when a production-parity frontend image is
 # actually needed (e.g. for a deployment dry run).
-#
-# MinIO (S3-compatible object storage) is intentionally deferred to the
-# document-storage phase, where the storage abstraction it backs is
-# actually implemented — adding it now would mean an unused service with
-# nothing to configure against it.
 
 services:
   postgres:
@@ -40,6 +35,39 @@ services:
       timeout: 5s
       retries: 10
 
+  minio:
+    # S3-compatible object storage — the only backend
+    # apps/documents/storage.py targets (see docs/adr/0004-storage-abstraction.md).
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${DOCUMENT_STORAGE_ACCESS_KEY:-docpilot}
+      MINIO_ROOT_PASSWORD: ${DOCUMENT_STORAGE_SECRET_KEY:-docpilot-dev-secret}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: creates the documents bucket on startup, then exits. minio
+  # itself doesn't auto-create buckets — the backend would otherwise 404
+  # on every upload against a bucket that was never created.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+      mc alias set local http://minio:9000 ${DOCUMENT_STORAGE_ACCESS_KEY:-docpilot} ${DOCUMENT_STORAGE_SECRET_KEY:-docpilot-dev-secret} &&
+      mc mb --ignore-existing local/${DOCUMENT_STORAGE_BUCKET:-docpilot-documents}
+      "
+
   backend:
     build:
       context: ./backend
@@ -52,6 +80,14 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       DATABASE_URL: postgres://${POSTGRES_USER:-docpilot}:${POSTGRES_PASSWORD:-docpilot}@postgres:5432/${POSTGRES_DB:-docpilot}
       REDIS_URL: redis://redis:6379/0
+      DOCUMENT_STORAGE_ENDPOINT_URL: http://minio:9000
+      # Presigned URLs must be reachable by the browser, which can't
+      # resolve the internal "minio" Docker hostname above — see
+      # apps/documents/storage.py.
+      DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL: http://localhost:${MINIO_PORT:-9000}
+      DOCUMENT_STORAGE_ACCESS_KEY: ${DOCUMENT_STORAGE_ACCESS_KEY:-docpilot}
+      DOCUMENT_STORAGE_SECRET_KEY: ${DOCUMENT_STORAGE_SECRET_KEY:-docpilot-dev-secret}
+      DOCUMENT_STORAGE_BUCKET: ${DOCUMENT_STORAGE_BUCKET:-docpilot-documents}
       SENTRY_DSN: ${SENTRY_DSN:-}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
@@ -62,7 +98,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
   redis_data:
+  minio_data:

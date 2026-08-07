@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
+    "django_filters",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
@@ -38,6 +39,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.workspaces",
     "apps.audit",
+    "apps.documents",
 ]
 
 # Custom user model, defined before any migration has ever been applied to
@@ -104,6 +106,32 @@ CORS_ALLOW_CREDENTIALS = True
 # yet (that lands in the async-processing phase). Used now by the
 # readiness endpoint to verify Redis is reachable.
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
+
+# --- Object storage (documents) --------------------------------------------
+# S3-compatible everywhere — MinIO locally (see docker-compose.yml),
+# real S3 (or another S3-compatible provider) in deployment. Never
+# public: files are fetched only via short-lived signed URLs generated
+# per request (see apps/documents/storage.py).
+DOCUMENT_STORAGE_ENDPOINT_URL = env.str(
+    "DOCUMENT_STORAGE_ENDPOINT_URL", default="http://localhost:9000"
+)
+# Only needed when DOCUMENT_STORAGE_ENDPOINT_URL isn't reachable by the
+# browser (running via docker-compose: the backend reaches MinIO at the
+# internal hostname http://minio:9000, but a presigned URL must use the
+# host-mapped http://localhost:9000 or the browser can't resolve it).
+# Empty (the default) means "same as DOCUMENT_STORAGE_ENDPOINT_URL" — the
+# common case when running the backend natively, not via Docker.
+DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL = env.str("DOCUMENT_STORAGE_PUBLIC_ENDPOINT_URL", default="")
+DOCUMENT_STORAGE_ACCESS_KEY = env.str("DOCUMENT_STORAGE_ACCESS_KEY", default="docpilot")
+DOCUMENT_STORAGE_SECRET_KEY = env.str("DOCUMENT_STORAGE_SECRET_KEY", default="docpilot-dev-secret")
+DOCUMENT_STORAGE_BUCKET = env.str("DOCUMENT_STORAGE_BUCKET", default="docpilot-documents")
+DOCUMENT_STORAGE_REGION = env.str("DOCUMENT_STORAGE_REGION", default="us-east-1")
+# MinIO needs virtual-host-style addressing disabled (path style) since
+# it doesn't do per-bucket DNS the way real S3 does.
+DOCUMENT_STORAGE_USE_PATH_STYLE = env.bool("DOCUMENT_STORAGE_USE_PATH_STYLE", default=True)
+
+DOCUMENT_MAX_UPLOAD_SIZE_BYTES = env.int("DOCUMENT_MAX_UPLOAD_SIZE_BYTES", default=20 * 1024 * 1024)
+DOCUMENT_SIGNED_URL_EXPIRY_SECONDS = env.int("DOCUMENT_SIGNED_URL_EXPIRY_SECONDS", default=300)
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

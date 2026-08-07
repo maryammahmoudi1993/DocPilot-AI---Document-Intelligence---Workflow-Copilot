@@ -9,6 +9,7 @@ ADR that supersedes it and says so, rather than editing history.
 | [0001](0001-modular-monolith.md) | Modular monolith, not microservices | Accepted |
 | [0002](0002-custom-user-model.md) | Custom user model, introduced now | Accepted |
 | [0003](0003-cors-configuration.md) | CORS via an explicit origin allowlist, not a wildcard | Accepted |
+| [0004](0004-storage-abstraction.md) | S3-compatible object storage behind a narrow interface | Accepted |
 
 ## Template
 
