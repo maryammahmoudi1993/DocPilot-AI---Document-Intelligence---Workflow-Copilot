@@ -40,8 +40,8 @@ Each bounded piece of the product is its own Django app under
 | App | Responsibility | Status |
 |---|---|---|
 | `apps.health` | Liveness/readiness probes | Implemented (Phase 0B) |
-| `apps.accounts` | Custom user model, JWT auth (login/refresh/logout/session) | Implemented (Phase 2A, backend only) |
-| `apps.workspaces` | Workspace isolation, membership, RBAC | Implemented (Phase 2A, backend only) |
+| `apps.accounts` | Custom user model, JWT auth (login/refresh/logout/session) | Implemented (Phase 2A backend, Phase 2B frontend) |
+| `apps.workspaces` | Workspace isolation, membership, RBAC | Implemented (Phase 2A backend; frontend selector/nav gating in Phase 2B — membership-management UI itself still backend-only) |
 | `apps.audit` | Immutable audit-event log | Implemented (Phase 2A) |
 | `apps.documents` | Upload, storage, parsing/OCR orchestration | Planned (Phase 3–4) |
 | `apps.extraction` | Structured extraction, confidence, validation, review | Planned (Phase 5) |
@@ -137,10 +137,13 @@ use it.
 
 ## What this document intentionally does not cover yet
 
-Authentication/authorization and workspace isolation are implemented on
-the backend (Phase 2A) but have no frontend UI yet (Phase 2B). The
-extraction pipeline, the RAG assistant, the workflow engine, and
-analytics are all designed in their respective phase prompts but not
-implemented — this document describes verified, implemented reality plus
-the module map those phases will fill in, not a forward-looking design
-spec for all of them.
+Authentication (sign-in, session bootstrap, protected routes, logout)
+and workspace selection/permission-aware navigation are implemented
+end-to-end (Phase 2A backend + Phase 2B frontend). Workspace membership
+*management* (invite/remove/change-role/transfer-ownership) has a
+backend API (Phase 2A) but no frontend UI yet. The extraction pipeline,
+document upload, the RAG assistant, the workflow engine, and analytics
+are all designed in their respective phase prompts but not implemented
+— this document describes verified, implemented reality plus the module
+map those phases will fill in, not a forward-looking design spec for
+all of them.

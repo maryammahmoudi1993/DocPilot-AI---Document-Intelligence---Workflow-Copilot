@@ -155,8 +155,10 @@ relying on this for a live demo.
 - **Phase 0D** — Docker Compose, CI, root docs, ADR. Done.
 - **Phase 1** — frontend design system, shared app shell, route
   placeholders. Done.
-- **Phase 2A** — this phase: backend authentication (JWT), workspaces,
-  membership, RBAC, audit trail.
-- No frontend auth UI, documents, extraction, RAG, workflows, or
-  analytics are implemented yet — see `docs/architecture-overview.md`
-  for the module map and what's planned per phase.
+- **Phase 2A** — backend authentication (JWT), workspaces, membership,
+  RBAC, audit trail. Done.
+- **Phase 2B** — this phase: frontend sign-in, session bootstrap,
+  protected routes, workspace selector, permission-aware navigation.
+- No documents, extraction, RAG, workflows, or analytics are
+  implemented yet — see `docs/architecture-overview.md` for the module
+  map and what's planned per phase.
