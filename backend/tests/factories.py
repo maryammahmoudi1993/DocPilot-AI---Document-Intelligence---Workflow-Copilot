@@ -2,6 +2,7 @@ import factory
 from factory.django import DjangoModelFactory
 
 from apps.accounts.models import User
+from apps.documents.models import Document
 from apps.workspaces.models import Role, Workspace, WorkspaceMembership
 
 DEFAULT_PASSWORD = "test-pass-only-123!"  # noqa: S105 - fixture-only, not a real credential
@@ -44,3 +45,16 @@ class WorkspaceMembershipFactory(DjangoModelFactory):
     workspace = factory.SubFactory(WorkspaceFactory)
     user = factory.SubFactory(UserFactory)
     role = Role.VIEWER
+
+
+class DocumentFactory(DjangoModelFactory):
+    class Meta:
+        model = Document
+
+    workspace = factory.SubFactory(WorkspaceFactory)
+    uploaded_by = factory.SubFactory(UserFactory)
+    filename = factory.Sequence(lambda n: f"document-{n}.pdf")
+    content_type = "application/pdf"
+    size_bytes = 1024
+    checksum_sha256 = factory.Sequence(lambda n: f"{n:064x}")
+    storage_key = factory.LazyAttribute(lambda o: f"{o.workspace.id}/{o.filename}")
