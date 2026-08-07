@@ -12,10 +12,17 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+import { MANAGER_ROLES, type WorkspaceRole } from '@/features/auth/types';
+
 export interface NavItem {
   label: string;
   path: string;
   icon: LucideIcon;
+  /** Omitted = visible to every workspace member. Set = visible only to
+   * the listed roles (permission-aware nav — see Sidebar.tsx). This is a
+   * UX affordance only; the backend independently enforces who can
+   * actually do anything on the page itself. */
+  requiresRole?: WorkspaceRole[];
 }
 
 /** Single source of truth for the product sidebar — every protected route
@@ -31,5 +38,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Analytics', path: '/app/analytics', icon: BarChart3 },
   { label: 'Audit Log', path: '/app/audit-log', icon: History },
   { label: 'Integrations', path: '/app/integrations', icon: Plug },
-  { label: 'Settings', path: '/app/settings', icon: Settings },
+  { label: 'Settings', path: '/app/settings', icon: Settings, requiresRole: MANAGER_ROLES },
 ];

@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
+import { renderWithProviders } from '@/test/testUtils';
 
 function renderShell() {
-  return render(
+  return renderWithProviders(
     <MemoryRouter initialEntries={['/app/dashboard']}>
       <Routes>
         <Route path="/app" element={<AppShell />}>

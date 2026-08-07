@@ -1,6 +1,35 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/** No live backend in this sandbox (see e2e/sign-in.spec.ts) — /app/*
+ * routes are protected (Phase 2B), so these shell/viewport tests need a
+ * mocked signed-in session or they'd just redirect to /sign-in. */
+async function mockSignedInSession(page: Page) {
+  await page.route('**/api/auth/session/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: { id: 'user-1', email: 'owner@demo.docpilot.ai', first_name: 'Demo', last_name: 'Owner' },
+        workspaces: [{ id: 'ws-1', name: 'Demo Workspace', slug: 'demo-workspace', role: 'owner' }],
+        active_workspace_id: 'ws-1',
+      }),
+    }),
+  );
+  await page.route('**/api/auth/refresh/', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ access: 'fake-access-token' }),
+    }),
+  );
+  await page.route('**/api/auth/active-workspace/', (route) => route.fulfill({ status: 204 }));
+}
 
 test.describe('AppShell — responsive and keyboard behavior', () => {
+  test.beforeEach(async ({ page }) => {
+    await mockSignedInSession(page);
+  });
+
   test('desktop sidebar is visible and collapsible at 1440px', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/app/dashboard');

@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Drawer } from '@/components/ui/Drawer';
+import { useSession } from '@/features/auth/hooks';
 import { cn } from '@/lib/utils';
 
 /**
@@ -14,6 +15,8 @@ import { cn } from '@/lib/utils';
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { data: session } = useSession();
+  const activeRole = session?.workspaces.find((w) => w.id === session.active_workspace_id)?.role;
 
   return (
     <div className="flex min-h-screen bg-page">
@@ -30,11 +33,15 @@ export function AppShell() {
           collapsed ? 'w-16' : 'w-64',
         )}
       >
-        <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((value) => !value)} />
+        <Sidebar
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed((value) => !value)}
+          role={activeRole}
+        />
       </aside>
 
       <Drawer open={mobileNavOpen} onOpenChange={setMobileNavOpen} title="DocPilot AI" side="left">
-        <Sidebar onNavigate={() => setMobileNavOpen(false)} />
+        <Sidebar onNavigate={() => setMobileNavOpen(false)} role={activeRole} />
       </Drawer>
 
       <div className="flex min-w-0 flex-1 flex-col">

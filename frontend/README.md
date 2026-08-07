@@ -108,6 +108,51 @@ every responsive `sm:`/`md:`/`lg:` variant — which needed `@import
 directives) silently compiled to nothing. If you ever see a custom color
 or breakpoint variant have no visual effect, check both of these first.
 
+## Authentication
+
+Real JWT auth against the backend (`apps.accounts`/`apps.workspaces` —
+see `backend/README.md`), not a mocked sign-in:
+
+- **Access token**: in memory only (`src/stores/authTokenStore.ts`,
+  Zustand) — never `localStorage`/`sessionStorage` (XSS-exfiltrable).
+  Lost on page reload by design; recovered automatically.
+- **Refresh token**: httpOnly cookie, set by the backend, never touched
+  by frontend JS at all.
+- **Session bootstrap / recovery**: `src/lib/apiClient.ts`'s fetch
+  wrapper transparently handles both a fresh page load (no access token
+  yet → first request 401s → silent refresh from the cookie → retry) and
+  an expired access token mid-session, with exactly one retry. If the
+  refresh also fails, a `SessionExpiredError` propagates to the caller
+  (`useSession`'s error state), and `ProtectedRoute` redirects to
+  `/sign-in`, preserving the page the user was headed to.
+- **Client-side route/nav gating is UX only.** `ProtectedRoute` (session
+  required) and `RequireRole` (workspace role required, e.g. Settings is
+  Owner/Admin-only — see `src/config/navigation.ts`) never replace the
+  backend's own authorization, which re-checks every request
+  independently (see `backend/apps/workspaces/permissions.py`).
+- **Logout** clears the token, blacklists the refresh token
+  server-side, and clears the entire TanStack Query cache — not just
+  the session — so no signed-in user's cached data can leak to whoever
+  uses the browser next.
+
+`src/mocks/` (MSW) mirrors the real backend's response contract exactly
+— used by the Vitest suite, not shipped in the production build.
+
+**No live backend was reachable in the sandbox this phase was built
+in** (Docker Desktop's engine — see the root README's "Known
+limitation" — plus no Postgres/Redis running locally), so true
+end-to-end sign-in/redirect/logout/workspace-switch scenarios against a
+real Django server were not run here. That behavior is instead
+exercised at the network-mock boundary by 72 Vitest + Testing Library +
+MSW tests against the real component/hook/router tree (not a stub) —
+see `src/test/{SignIn,ProtectedRoute,WorkspaceSelector,RequireRole,
+PermissionAwareNav}.test.tsx`. Playwright (`e2e/sign-in.spec.ts`,
+`e2e/app-shell.spec.ts`) covers what's checkable without a backend:
+page rendering, keyboard operability, and (via Playwright request
+mocking, not MSW) the protected-route shell at real browser viewports.
+Run the full auth E2E suite against a real backend before relying on
+this for a live demo.
+
 ## Testing
 
 ### Unit Tests (Vitest)
