@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, FileStack } from 'lucide-react';
 import { NAV_ITEMS } from '@/config/navigation';
+import type { WorkspaceRole } from '@/features/auth/types';
 import { IconButton } from '@/components/ui/IconButton';
 import { cn } from '@/lib/utils';
 
@@ -9,11 +10,17 @@ export interface SidebarProps {
   onToggleCollapse?: () => void;
   onNavigate?: () => void;
   className?: string;
+  /** Caller's role in the active workspace — undefined while session
+   * data hasn't loaded yet. Items with `requiresRole` are hidden until
+   * the role is known, not shown-then-yanked once it resolves. */
+  role?: WorkspaceRole;
 }
 
 /** Rendered both inline (desktop) and inside the mobile Drawer — this is
  * the single source of sidebar markup so no page duplicates it. */
-export function Sidebar({ collapsed = false, onToggleCollapse, onNavigate, className }: SidebarProps) {
+export function Sidebar({ collapsed = false, onToggleCollapse, onNavigate, className, role }: SidebarProps) {
+  const visibleItems = NAV_ITEMS.filter((item) => !item.requiresRole || (role && item.requiresRole.includes(role)));
+
   return (
     <nav aria-label="Primary" className={cn('flex h-full flex-col bg-sidebar', className)}>
       <div className={cn('flex items-center gap-2 px-4 py-5', collapsed && 'justify-center px-2')}>
@@ -24,7 +31,7 @@ export function Sidebar({ collapsed = false, onToggleCollapse, onNavigate, class
       </div>
 
       <ul className="flex-1 space-y-1 px-2">
-        {NAV_ITEMS.map((item) => (
+        {visibleItems.map((item) => (
           <li key={item.path}>
             <NavLink
               to={item.path}
