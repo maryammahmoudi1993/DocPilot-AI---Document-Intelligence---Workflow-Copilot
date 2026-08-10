@@ -33,9 +33,12 @@ def test_a_successful_upload_schedules_processing(
 
     with patch("apps.processing.services.run_processing_pipeline.delay") as delay:
         with django_capture_on_commit_callbacks(execute=True):
+            uploaded_file = SimpleUploadedFile(
+                "invoice.pdf", PDF_BYTES, content_type="application/pdf"
+            )
             response = api_client.post(
                 reverse("document-list", args=[workspace.id]),
-                {"file": SimpleUploadedFile("invoice.pdf", PDF_BYTES, content_type="application/pdf")},
+                {"file": uploaded_file},
                 format="multipart",
             )
 
@@ -53,9 +56,12 @@ def test_a_rejected_upload_never_schedules_processing(
 
     with patch("apps.processing.services.run_processing_pipeline.delay") as delay:
         with django_capture_on_commit_callbacks(execute=True):
+            uploaded_file = SimpleUploadedFile(
+                "malware.exe", b"MZ...", content_type="application/octet-stream"
+            )
             response = api_client.post(
                 reverse("document-list", args=[workspace.id]),
-                {"file": SimpleUploadedFile("malware.exe", b"MZ...", content_type="application/octet-stream")},
+                {"file": uploaded_file},
                 format="multipart",
             )
 

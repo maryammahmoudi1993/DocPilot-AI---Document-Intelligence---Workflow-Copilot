@@ -31,14 +31,16 @@ def fake_providers(monkeypatch):
     external providers at module boundaries."""
     ocr = FakeOCRProvider()
     classification = FakeClassificationProvider(result="invoice")
-    monkeypatch.setattr("apps.processing.providers.get_ocr_provider", lambda: ocr)
-    monkeypatch.setattr("apps.processing.providers.get_classification_provider", lambda: classification)
+    monkeypatch.setattr("apps.processing.tasks.get_ocr_provider", lambda: ocr)
+    monkeypatch.setattr("apps.processing.tasks.get_classification_provider", lambda: classification)
     return ocr, classification
 
 
 def _job_with_file(fake_storage, *, content_type="application/pdf", pdf_bytes=None):
     document = DocumentFactory(content_type=content_type)
-    fake_storage.objects[document.storage_key] = pdf_bytes if pdf_bytes is not None else digital_pdf_bytes()
+    fake_storage.objects[document.storage_key] = (
+        pdf_bytes if pdf_bytes is not None else digital_pdf_bytes()
+    )
     return ProcessingJobFactory(document=document, workspace=document.workspace)
 
 
@@ -46,7 +48,9 @@ def _job_with_file(fake_storage, *, content_type="application/pdf", pdf_bytes=No
 class TestSuccessfulPaths:
     def test_a_fully_digital_pdf_completes_without_calling_ocr(self, fake_storage, fake_providers):
         ocr, classification = fake_providers
-        job = _job_with_file(fake_storage, pdf_bytes=digital_pdf_bytes("Total due: 900.00"))
+        job = _job_with_file(
+            fake_storage, pdf_bytes=digital_pdf_bytes("Total amount due: 900.00 USD")
+        )
 
         run_processing_pipeline.delay(str(job.id))
         job.refresh_from_db()
@@ -69,7 +73,9 @@ class TestSuccessfulPaths:
         assert job.ocr_page_count == 1
         assert ocr.page_calls == [1]
 
-    def test_mixed_digital_and_scanned_pages_only_ocrs_the_scanned_one(self, fake_storage, fake_providers):
+    def test_mixed_digital_and_scanned_pages_only_ocrs_the_scanned_one(
+        self, fake_storage, fake_providers
+    ):
         ocr, _ = fake_providers
         job = _job_with_file(fake_storage, pdf_bytes=mixed_pdf_bytes())
 
@@ -80,7 +86,9 @@ class TestSuccessfulPaths:
         assert job.total_pages == 3
         assert ocr.page_calls == [2]
 
-    def test_placeholder_stages_are_recorded_without_fabricated_data(self, fake_storage, fake_providers):
+    def test_placeholder_stages_are_recorded_without_fabricated_data(
+        self, fake_storage, fake_providers
+    ):
         job = _job_with_file(fake_storage)
 
         run_processing_pipeline.delay(str(job.id))
@@ -94,7 +102,11 @@ class TestSuccessfulPaths:
             ProcessingStage.INDEXING,
         ):
             assert deferred_stage in recorded_stages
-        deferred_entries = [e for e in job.stage_history if e["stage"] in recorded_stages and e["status"] == "skipped"]
+        deferred_entries = [
+            e
+            for e in job.stage_history
+            if e["stage"] in recorded_stages and e["status"] == "skipped"
+        ]
         assert any("Phase 5" in e["detail"] or "Phase 6" in e["detail"] for e in deferred_entries)
 
 
@@ -111,7 +123,9 @@ class TestValidationFailures:
         assert job.is_retryable is False
         assert job.attempt_count == 1
 
-    def test_a_password_protected_pdf_fails_immediately_without_retrying(self, fake_storage, fake_providers):
+    def test_a_password_protected_pdf_fails_immediately_without_retrying(
+        self, fake_storage, fake_providers
+    ):
         job = _job_with_file(fake_storage, pdf_bytes=password_protected_pdf_bytes())
 
         run_processing_pipeline.delay(str(job.id))
@@ -122,7 +136,9 @@ class TestValidationFailures:
         assert job.is_retryable is False
         assert job.attempt_count == 1
 
-    def test_error_codes_are_stable_short_slugs_not_raw_exception_text(self, fake_storage, fake_providers):
+    def test_error_codes_are_stable_short_slugs_not_raw_exception_text(
+        self, fake_storage, fake_providers
+    ):
         job = _job_with_file(fake_storage, pdf_bytes=corrupt_pdf_bytes())
 
         run_processing_pipeline.delay(str(job.id))
@@ -135,14 +151,18 @@ class TestValidationFailures:
 
 @pytest.mark.django_db
 class TestRetryBehavior:
-    def test_a_retryable_provider_failure_retries_and_then_succeeds(self, fake_storage, monkeypatch):
+    def test_a_retryable_provider_failure_retries_and_then_succeeds(
+        self, fake_storage, monkeypatch
+    ):
         ocr = FakeOCRProvider(
             fail_times=1,
             error=RetryableProcessingError("OCR provider timed out.", code="ocr_provider_timeout"),
         )
         classification = FakeClassificationProvider(result="invoice")
-        monkeypatch.setattr("apps.processing.providers.get_ocr_provider", lambda: ocr)
-        monkeypatch.setattr("apps.processing.providers.get_classification_provider", lambda: classification)
+        monkeypatch.setattr("apps.processing.tasks.get_ocr_provider", lambda: ocr)
+        monkeypatch.setattr(
+            "apps.processing.tasks.get_classification_provider", lambda: classification
+        )
         job = _job_with_file(fake_storage, pdf_bytes=scanned_pdf_bytes())
 
         run_processing_pipeline.delay(str(job.id))
@@ -151,13 +171,20 @@ class TestRetryBehavior:
         assert job.stage == ProcessingStage.COMPLETED
         assert job.attempt_count == 2  # first attempt failed, second succeeded
 
-    def test_a_persistently_retryable_failure_eventually_fails_as_retryable(self, fake_storage, monkeypatch):
+    def test_a_persistently_retryable_failure_eventually_fails_as_retryable(
+        self, fake_storage, monkeypatch
+    ):
         ocr = FakeOCRProvider(
             fail_times=99,
-            error=RetryableProcessingError("OCR provider unavailable.", code="ocr_provider_unavailable"),
+            error=RetryableProcessingError(
+                "OCR provider unavailable.", code="ocr_provider_unavailable"
+            ),
         )
-        monkeypatch.setattr("apps.processing.providers.get_ocr_provider", lambda: ocr)
-        monkeypatch.setattr("apps.processing.providers.get_classification_provider", lambda: FakeClassificationProvider())
+        monkeypatch.setattr("apps.processing.tasks.get_ocr_provider", lambda: ocr)
+        monkeypatch.setattr(
+            "apps.processing.tasks.get_classification_provider",
+            lambda: FakeClassificationProvider(),
+        )
         job = _job_with_file(fake_storage, pdf_bytes=scanned_pdf_bytes())
 
         run_processing_pipeline.delay(str(job.id))
@@ -171,7 +198,9 @@ class TestRetryBehavior:
 
 @pytest.mark.django_db
 class TestIdempotency:
-    def test_running_an_already_completed_job_again_is_a_safe_no_op(self, fake_storage, fake_providers):
+    def test_running_an_already_completed_job_again_is_a_safe_no_op(
+        self, fake_storage, fake_providers
+    ):
         ocr, _ = fake_providers
         job = _job_with_file(fake_storage)
         run_processing_pipeline.delay(str(job.id))
@@ -191,11 +220,16 @@ class TestIdempotency:
 
 @pytest.mark.django_db
 class TestSafeRawResultPersistence:
-    def test_raw_text_excerpt_is_bounded_even_for_very_long_ocr_output(self, fake_storage, monkeypatch):
+    def test_raw_text_excerpt_is_bounded_even_for_very_long_ocr_output(
+        self, fake_storage, monkeypatch
+    ):
         very_long_text = "x" * 5000
         ocr = FakeOCRProvider(text=very_long_text)
-        monkeypatch.setattr("apps.processing.providers.get_ocr_provider", lambda: ocr)
-        monkeypatch.setattr("apps.processing.providers.get_classification_provider", lambda: FakeClassificationProvider())
+        monkeypatch.setattr("apps.processing.tasks.get_ocr_provider", lambda: ocr)
+        monkeypatch.setattr(
+            "apps.processing.tasks.get_classification_provider",
+            lambda: FakeClassificationProvider(),
+        )
         job = _job_with_file(fake_storage, pdf_bytes=scanned_pdf_bytes())
 
         run_processing_pipeline.delay(str(job.id))

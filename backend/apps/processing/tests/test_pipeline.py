@@ -47,13 +47,17 @@ class TestStageValidate:
         # Images/docx/etc. have no pypdf-parseable structure to validate
         # here — Phase 3's upload-time validation already checked
         # extension/MIME/magic bytes; this stage only guards the PDF path.
-        pipeline.stage_validate(_job(content_type="image/png"), b"not a pdf at all")  # must not raise
+        pipeline.stage_validate(
+            _job(content_type="image/png"), b"not a pdf at all"
+        )  # must not raise
 
 
 class TestStageExtractText:
     def test_a_fully_digital_pdf_needs_no_ocr(self):
         job = _job()
-        text, ocr_pages = pipeline.stage_extract_text(job, digital_pdf_bytes("Invoice total 500.00"))
+        text, ocr_pages = pipeline.stage_extract_text(
+            job, digital_pdf_bytes("Invoice total 500.00")
+        )
 
         assert "Invoice total 500.00" in text
         assert ocr_pages == []

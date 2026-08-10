@@ -12,7 +12,13 @@ class FakeOCRProvider:
     succeeds on retry (or never, if set high enough).
     """
 
-    def __init__(self, *, text: str = "ocr-extracted-text", fail_times: int = 0, error: Exception | None = None):
+    def __init__(
+        self,
+        *,
+        text: str = "ocr-extracted-text",
+        fail_times: int = 0,
+        error: Exception | None = None,
+    ):
         self.page_calls: list[int] = []
         self.image_calls: int = 0
         self._text = text
