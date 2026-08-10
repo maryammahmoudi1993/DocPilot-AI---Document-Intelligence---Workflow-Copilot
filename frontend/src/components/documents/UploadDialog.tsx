@@ -2,6 +2,7 @@ import { CheckCircle2, FileWarning, X } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
+import { ProcessingStatusInline } from '@/components/processing/ProcessingStatusInline';
 import { UploadDropzone } from './UploadDropzone';
 import type { UploadQueueItem } from '@/features/documents/hooks';
 
@@ -13,6 +14,10 @@ export interface UploadDialogProps {
   onCancel: (id: string) => void;
   onRetry: (id: string) => void;
   onRemove: (id: string) => void;
+  /** Needed to track each successfully-uploaded file's async processing
+   * job (see ProcessingStatusInline) — undefined only very briefly
+   * while the session/workspace is still loading. */
+  workspaceId: string | undefined;
 }
 
 function formatSize(bytes: number): string {
@@ -21,7 +26,16 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function UploadDialog({ open, onOpenChange, items, onFilesSelected, onCancel, onRetry, onRemove }: UploadDialogProps) {
+export function UploadDialog({
+  open,
+  onOpenChange,
+  items,
+  onFilesSelected,
+  onCancel,
+  onRetry,
+  onRemove,
+  workspaceId,
+}: UploadDialogProps) {
   const anyUploading = items.some((item) => item.status === 'uploading');
 
   return (
@@ -101,6 +115,10 @@ export function UploadDialog({ open, onOpenChange, items, onFilesSelected, onCan
                       </IconButton>
                     </div>
                   </div>
+                )}
+
+                {item.status === 'success' && item.documentId && (
+                  <ProcessingStatusInline workspaceId={workspaceId} documentId={item.documentId} />
                 )}
               </li>
             ))}

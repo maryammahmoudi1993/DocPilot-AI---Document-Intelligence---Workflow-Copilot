@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/Button';
 import { useProcessingStatus, useRetryProcessing } from '@/features/processing/hooks';
-import { ProcessingStatusBadge, STAGE_LABEL } from './ProcessingStatusBadge';
+import { STAGE_LABEL } from '@/features/processing/labels';
+import { ProcessingStatusBadge } from './ProcessingStatusBadge';
 
 export interface ProcessingStatusInlineProps {
   workspaceId: string | undefined;
@@ -33,12 +34,18 @@ export function ProcessingStatusInline({ workspaceId, documentId }: ProcessingSt
     return <p className="mt-1.5 text-xs text-status-failed">Couldn't check processing status.</p>;
   }
 
+  // Only show the fine-grained stage name separately when it says more
+  // than the badge already does — for queued/completed/failed the two
+  // labels are identical, so a second copy would just be noise (and,
+  // worse, an ambiguous duplicate for anything querying by text).
+  const showStageDetail = !['queued', 'completed', 'failed'].includes(job.stage);
+
   return (
     <div className="mt-1.5 space-y-1">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ProcessingStatusBadge stage={job.stage} />
-          <span className="text-xs text-text-secondary">{STAGE_LABEL[job.stage]}</span>
+          {showStageDetail && <span className="text-xs text-text-secondary">{STAGE_LABEL[job.stage]}</span>}
         </div>
         {job.stage === 'failed' && job.is_retryable && (
           <Button

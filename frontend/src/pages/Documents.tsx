@@ -391,6 +391,7 @@ export function DocumentsPage() {
         onCancel={uploadQueue.cancel}
         onRetry={uploadQueue.retry}
         onRemove={uploadQueue.remove}
+        workspaceId={workspaceId}
       />
 
       <ConfirmationDialog
