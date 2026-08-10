@@ -36,20 +36,6 @@ const GROUP_CLASSES: Record<BadgeGroup, string> = {
   failed: 'bg-status-failed-bg text-status-failed',
 };
 
-export const STAGE_LABEL: Record<ProcessingStage, string> = {
-  queued: 'Queued',
-  validating: 'Validating',
-  extracting_text: 'Extracting text',
-  running_ocr: 'Running OCR',
-  classifying: 'Classifying',
-  extracting_fields: 'Extracting structured data',
-  validating_extraction: 'Validating extraction',
-  scoring_confidence: 'Scoring confidence',
-  indexing: 'Indexing',
-  completed: 'Completed',
-  failed: 'Failed',
-};
-
 export interface ProcessingStatusBadgeProps {
   stage: ProcessingStage;
   className?: string;
