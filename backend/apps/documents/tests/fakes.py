@@ -21,3 +21,6 @@ class FakeStorageBackend:
     def delete(self, *, key: str) -> None:
         self.objects.pop(key, None)
         self.deleted_keys.append(key)
+
+    def download(self, *, key: str) -> bytes:
+        return self.objects[key]

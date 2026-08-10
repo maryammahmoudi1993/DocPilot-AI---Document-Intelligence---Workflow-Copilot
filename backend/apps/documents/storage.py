@@ -38,6 +38,13 @@ class StorageBackend(Protocol):
 
     def delete(self, *, key: str) -> None: ...
 
+    def download(self, *, key: str) -> bytes:
+        """Fetch an object's raw bytes. Added for the async processing
+        pipeline (apps/processing) — the worker process needs the file's
+        actual content to extract text/run OCR, not just a browser-facing
+        signed URL. Never used to serve a response to the client."""
+        ...
+
 
 class S3StorageBackend:
     def __init__(self, *, client=None, presign_client=None) -> None:
@@ -83,6 +90,9 @@ class S3StorageBackend:
 
     def delete(self, *, key: str) -> None:
         self._client.delete_object(Bucket=self._bucket, Key=key)
+
+    def download(self, *, key: str) -> bytes:
+        return self._client.get_object(Bucket=self._bucket, Key=key)["Body"].read()
 
 
 _default_backend: StorageBackend | None = None

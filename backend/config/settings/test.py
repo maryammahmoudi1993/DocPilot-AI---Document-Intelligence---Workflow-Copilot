@@ -37,3 +37,12 @@ REST_FRAMEWORK = {**REST_FRAMEWORK, "TEST_REQUEST_DEFAULT_FORMAT": "json"}  # no
 SENTRY_DSN = ""
 
 LOGGING_CONFIG = None  # keep test output quiet; re-enable per-test if needed
+
+# Celery tasks run synchronously, in-process, in the same transaction as
+# the test — no broker/worker needed to test the pipeline. Propagate
+# exceptions so a task bug fails the test loudly instead of being
+# swallowed. Never use real OCR (no tesseract-ocr binary in CI/dev
+# without Docker) — see apps/processing/providers.py.
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+DOCUMENT_OCR_PROVIDER = "mock"

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.workspaces",
     "apps.audit",
     "apps.documents",
+    "apps.processing",
 ]
 
 # Custom user model, defined before any migration has ever been applied to
@@ -101,11 +102,37 @@ DATABASES = {
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])
 CORS_ALLOW_CREDENTIALS = True
 
-# --- Redis ----------------------------------------------------------------
-# Connection settings only in this phase — no Celery app/tasks are defined
-# yet (that lands in the async-processing phase). Used now by the
-# readiness endpoint to verify Redis is reachable.
+# --- Redis / Celery --------------------------------------------------------
+# Redis is both the readiness endpoint's dependency check target and the
+# Celery broker/result backend for the async document-processing pipeline
+# (Phase 4) — one Redis instance, two roles, no need for a second service.
 REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
+
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = "UTC"
+# Surfaces a "started" state (not just pending/success/failure) for the
+# progress/status endpoint — see apps/processing/views.py.
+CELERY_TASK_TRACK_STARTED = True
+
+# --- Document processing pipeline ------------------------------------------
+# "tesseract" (real OCR — requires the tesseract-ocr and poppler-utils
+# system packages installed alongside it; see Dockerfile) or "mock"
+# (deterministic, no system dependency — the default here so this module
+# stays importable/runnable anywhere without those binaries; local dev
+# via Docker Compose overrides to "tesseract", see local.py and
+# docker-compose.yml). See apps/processing/providers.py.
+DOCUMENT_OCR_PROVIDER = env.str("DOCUMENT_OCR_PROVIDER", default="mock")
+
+# A PDF page yielding fewer extracted characters than this is treated as
+# not having a usable digital text layer (i.e. scanned) and routed to
+# OCR instead. Deliberately small and documented rather than tuned
+# against real scan samples — see known limitations in the Phase 4
+# completion report.
+DOCUMENT_MIN_DIGITAL_TEXT_CHARS = env.int("DOCUMENT_MIN_DIGITAL_TEXT_CHARS", default=20)
 
 # --- Object storage (documents) --------------------------------------------
 # S3-compatible everywhere — MinIO locally (see docker-compose.yml),

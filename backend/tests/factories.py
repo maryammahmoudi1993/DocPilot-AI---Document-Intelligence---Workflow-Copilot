@@ -3,6 +3,7 @@ from factory.django import DjangoModelFactory
 
 from apps.accounts.models import User
 from apps.documents.models import Document
+from apps.processing.models import ProcessingJob, ProcessingStage
 from apps.workspaces.models import Role, Workspace, WorkspaceMembership
 
 DEFAULT_PASSWORD = "test-pass-only-123!"  # noqa: S105 - fixture-only, not a real credential
@@ -58,3 +59,12 @@ class DocumentFactory(DjangoModelFactory):
     size_bytes = 1024
     checksum_sha256 = factory.Sequence(lambda n: f"{n:064x}")
     storage_key = factory.LazyAttribute(lambda o: f"{o.workspace.id}/{o.filename}")
+
+
+class ProcessingJobFactory(DjangoModelFactory):
+    class Meta:
+        model = ProcessingJob
+
+    document = factory.SubFactory(DocumentFactory)
+    workspace = factory.LazyAttribute(lambda o: o.document.workspace)
+    stage = ProcessingStage.QUEUED

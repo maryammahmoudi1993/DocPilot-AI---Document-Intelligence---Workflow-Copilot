@@ -42,6 +42,24 @@ dependencies = [
   # (status/content-type filters, filename search, sort by
   # created_at/size/filename) instead of hand-rolled queryset branching.
   "django-filter==26.1",
+  # Async task queue for the document-processing pipeline (Phase 4) —
+  # required tech direction ("Redis and Celery").
+  "celery==5.6.3",
+  # Digital-PDF text extraction, corrupt/encrypted-file detection, and
+  # (in tests) generating small valid PDF fixtures — one library covers
+  # all three instead of a separate PDF-writing dependency.
+  "pypdf==6.15.0",
+  # Real OCR provider (apps/processing/providers.py) — only imported
+  # when DOCUMENT_OCR_PROVIDER=tesseract; requires the system
+  # tesseract-ocr binary (see Dockerfile). The "mock" provider (default
+  # everywhere except Docker Compose local dev) needs neither this nor
+  # pdf2image/Pillow below, but they're still installed unconditionally
+  # for simplicity — none of them do anything unless imported.
+  "pytesseract==0.3.13",
+  # Renders PDF pages to images for the OCR provider — requires the
+  # system poppler-utils binary (see Dockerfile).
+  "pdf2image==1.17.0",
+  "Pillow==12.3.0",
 ]
 
 [tool.setuptools.packages.find]
