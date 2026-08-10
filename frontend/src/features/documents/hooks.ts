@@ -75,6 +75,11 @@ export interface UploadQueueItem {
   progress: number;
   error?: string;
   controller: AbortController;
+  /** Set once the upload itself (not the async processing pipeline)
+   * succeeds — lets the dialog track that document's processing status
+   * (see components/documents/UploadDialog.tsx and
+   * features/processing/hooks.ts) independently of this upload queue. */
+  documentId?: string;
 }
 
 /**
@@ -100,8 +105,8 @@ export function useDocumentUploadQueue(workspaceId: string | undefined) {
 
       documentsApi
         .uploadDocument(workspaceId, file, (progress) => updateItem(id, { progress }), controller.signal)
-        .then(() => {
-          updateItem(id, { status: 'success', progress: 100 });
+        .then((document) => {
+          updateItem(id, { status: 'success', progress: 100, documentId: document.id });
           void queryClient.invalidateQueries({ queryKey: ['documents', workspaceId] });
         })
         .catch((error: unknown) => {
