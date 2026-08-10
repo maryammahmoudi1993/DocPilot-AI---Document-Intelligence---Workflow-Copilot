@@ -119,6 +119,12 @@ ignore_missing_imports = true
 module = ["boto3.*", "botocore.*", "django_filters.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# celery, pytesseract, and pdf2image ship no type stubs / py.typed
+# marker either (see apps/processing/).
+module = ["celery.*", "pytesseract.*", "pdf2image.*"]
+ignore_missing_imports = true
+
 [tool.django-stubs]
 django_settings_module = "config.settings.test"
 
