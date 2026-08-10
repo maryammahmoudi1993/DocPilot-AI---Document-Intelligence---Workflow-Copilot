@@ -20,3 +20,9 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.
 # fresh checkout. Never used outside local development: production.py
 # requires DJANGO_SECRET_KEY to be set and refuses to start otherwise.
 SECRET_KEY = _BASE_SECRET_KEY or "django-insecure-local-development-only-key"  # noqa: S105
+
+# The Docker Compose backend/celery-worker images install tesseract-ocr
+# and poppler-utils (see ../../Dockerfile) so real OCR works out of the
+# box in local dev — base.py's "mock" default is for contexts (a bare
+# `pip install` outside Docker, CI) where those binaries aren't present.
+DOCUMENT_OCR_PROVIDER = env.str("DOCUMENT_OCR_PROVIDER", default="tesseract")

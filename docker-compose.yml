@@ -72,7 +72,7 @@ services:
     build:
       context: ./backend
     command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
-    environment:
+    environment: &backend_env
       DJANGO_SETTINGS_MODULE: config.settings.local
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-local-development-only-key}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
@@ -89,8 +89,34 @@ services:
       DOCUMENT_STORAGE_SECRET_KEY: ${DOCUMENT_STORAGE_SECRET_KEY:-docpilot-dev-secret}
       DOCUMENT_STORAGE_BUCKET: ${DOCUMENT_STORAGE_BUCKET:-docpilot-documents}
       SENTRY_DSN: ${SENTRY_DSN:-}
+      # Real OCR (the Dockerfile installs tesseract-ocr/poppler-utils) —
+      # see apps/processing/providers.py. Shared by both this service and
+      # celery-worker below via the &backend_env anchor.
+      DOCUMENT_OCR_PROVIDER: ${DOCUMENT_OCR_PROVIDER:-tesseract}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  # Runs the async document-processing pipeline (apps/processing) —
+  # same image/environment as `backend`, different process. Split out
+  # (rather than running the worker inside the backend container) so
+  # the request-handling process and the task-processing process scale
+  # and restart independently, matching "processing runs outside the
+  # HTTP request" for real, not just in the abstract.
+  celery-worker:
+    build:
+      context: ./backend
+    command: celery -A config worker --loglevel=info
+    environment:
+      <<: *backend_env
     volumes:
       - ./backend:/app
     depends_on:

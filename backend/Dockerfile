@@ -8,9 +8,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# libpq5 is the runtime client library psycopg[binary] needs.
+# libpq5: runtime client library psycopg[binary] needs.
+# tesseract-ocr: real OCR provider (apps/processing/providers.py).
+# poppler-utils: pdf2image needs it (pdftoppm) to render PDF pages to
+# images before handing them to tesseract.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 \
+    && apt-get install -y --no-install-recommends libpq5 tesseract-ocr poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # This project's installable package IS its source (apps/, common/,

@@ -85,3 +85,15 @@ def test_delete_calls_boto3_delete_object_with_the_bucket_and_key(settings):
     backend.delete(key="ws/doc.pdf")
 
     client.delete_object.assert_called_once_with(Bucket="test-bucket", Key="ws/doc.pdf")
+
+
+def test_download_calls_boto3_get_object_and_returns_the_body_bytes(settings):
+    settings.DOCUMENT_STORAGE_BUCKET = "test-bucket"
+    client = MagicMock()
+    client.get_object.return_value = {"Body": BytesIO(b"file content")}
+    backend = S3StorageBackend(client=client)
+
+    result = backend.download(key="ws/doc.pdf")
+
+    assert result == b"file content"
+    client.get_object.assert_called_once_with(Bucket="test-bucket", Key="ws/doc.pdf")
