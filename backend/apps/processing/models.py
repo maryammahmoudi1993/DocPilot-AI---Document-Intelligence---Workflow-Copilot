@@ -90,11 +90,17 @@ class ProcessingJob(models.Model):
     is_retryable = models.BooleanField(default=False)
     # Stable, safe-to-display codes only (e.g. "corrupt_file",
     # "password_protected_pdf") — never a raw exception message or
-    # traceback. See apps/processing/exceptions.py.
-    error_code = models.CharField(max_length=64, null=True, blank=True)
-    error_message = models.CharField(max_length=500, null=True, blank=True)
+    # traceback. See apps/processing/exceptions.py. `null=True` (rather
+    # than the usual Django CharField convention of blank="" as the only
+    # "empty" sentinel) is deliberate here: None unambiguously means "no
+    # error has happened yet", distinct from an empty string that could
+    # otherwise be mistaken for a (nonsensical) empty error code.
+    error_code = models.CharField(max_length=64, null=True, blank=True)  # noqa: DJ001
+    error_message = models.CharField(max_length=500, null=True, blank=True)  # noqa: DJ001
 
-    document_type = models.CharField(
+    # Same rationale as error_code/error_message above: None means
+    # "classification hasn't run yet", not "classified as nothing".
+    document_type = models.CharField(  # noqa: DJ001
         max_length=16, choices=DocumentType.choices, null=True, blank=True
     )
     total_pages = models.PositiveIntegerField(null=True, blank=True)
