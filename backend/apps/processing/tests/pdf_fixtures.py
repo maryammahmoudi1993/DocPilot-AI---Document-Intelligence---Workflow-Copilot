@@ -42,7 +42,8 @@ def _hand_written_pdf(page_texts: list[str]) -> bytes:
             + b"\nendstream endobj\n"
         )
 
-    objects.append(f"{font_obj_num} 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n".encode())
+    font_obj = f"{font_obj_num} 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n"
+    objects.append(font_obj.encode())
 
     header = b"%PDF-1.4\n"
     body = b""
@@ -58,7 +59,9 @@ def _hand_written_pdf(page_texts: list[str]) -> bytes:
     xref = f"xref\n0 {object_count}\n0000000000 65535 f \n".encode()
     for offset in offsets[1:]:
         xref += f"{offset:010d} 00000 n \n".encode()
-    trailer = f"trailer<< /Size {object_count} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF".encode()
+    trailer = (
+        f"trailer<< /Size {object_count} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF".encode()
+    )
 
     return header + body + xref + trailer
 
@@ -80,7 +83,9 @@ def mixed_pdf_bytes() -> bytes:
     """Three pages: digital, scanned, digital — exercises the
     "mixed digital/scanned pages" path (only the scanned one should be
     routed to OCR)."""
-    return _hand_written_pdf(["Page one has real text content here.", "", "Page three also has real text."])
+    return _hand_written_pdf(
+        ["Page one has real text content here.", "", "Page three also has real text."]
+    )
 
 
 def corrupt_pdf_bytes() -> bytes:

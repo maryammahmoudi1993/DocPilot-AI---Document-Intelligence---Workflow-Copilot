@@ -39,10 +39,15 @@ SENTRY_DSN = ""
 LOGGING_CONFIG = None  # keep test output quiet; re-enable per-test if needed
 
 # Celery tasks run synchronously, in-process, in the same transaction as
-# the test — no broker/worker needed to test the pipeline. Propagate
-# exceptions so a task bug fails the test loudly instead of being
-# swallowed. Never use real OCR (no tesseract-ocr binary in CI/dev
-# without Docker) — see apps/processing/providers.py.
+# the test — no broker/worker needed to test the pipeline.
+# CELERY_TASK_EAGER_PROPAGATES is deliberately left at its default
+# (False): the pipeline task (apps/processing/tasks.py) intentionally
+# catches every exception itself (including the internal `Retry` control-
+# flow exception `self.retry()` raises) and never lets one escape
+# uncaught — that's what makes a worker process survive an unexpected
+# per-document failure. Setting propagate=True here would make Celery's
+# eager-mode tracer re-raise that internal Retry exception immediately
+# instead of letting `apply()`'s own retry-loop catch it, breaking
+# in-test retry simulation entirely (see test_tasks.py's retry tests).
 CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True
 DOCUMENT_OCR_PROVIDER = "mock"

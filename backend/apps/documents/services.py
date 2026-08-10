@@ -17,7 +17,9 @@ from apps.audit.services import record_event
 from apps.documents.models import Document, DocumentStatus
 from apps.documents.storage import StorageBackend, get_storage_backend
 from apps.documents.validation import validate_upload
+from apps.processing.services import enqueue_processing
 from apps.workspaces.models import Workspace
+from common.logging import correlation_id_var
 
 
 def compute_sha256(uploaded_file) -> str:
@@ -85,6 +87,13 @@ def create_document(
                 workspace=workspace,
                 metadata={"document_id": str(document.id), "filename": document.filename},
             )
+            # Deliberately inside the same atomic block (so it only ever
+            # fires for a document row that actually committed) but the
+            # task itself isn't scheduled until after commit — see
+            # enqueue_processing. Upload returns as soon as this
+            # function returns; processing runs later, out of this
+            # request entirely (Phase 4 requirement).
+            enqueue_processing(document=document, correlation_id=correlation_id_var.get() or "")
     except Exception:
         # The DB row never committed — don't leave an orphaned object in
         # storage with nothing referencing it.

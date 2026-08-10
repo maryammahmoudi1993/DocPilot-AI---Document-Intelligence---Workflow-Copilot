@@ -4,12 +4,14 @@ execution itself is mocked out (`run_processing_pipeline.delay`) since
 these are view-contract tests, not pipeline tests (see test_tasks.py).
 """
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 
-from apps.processing.models import ProcessingStage
+from apps.processing.models import ProcessingJob, ProcessingStage
 from tests.factories import (
     DocumentFactory,
     ProcessingJobFactory,
@@ -17,6 +19,15 @@ from tests.factories import (
     WorkspaceFactory,
     WorkspaceMembershipFactory,
 )
+
+
+def _age(job: ProcessingJob, minutes: int) -> ProcessingJob:
+    """Backdates a job's auto_now_add created_at so ordering-by-recency
+    assertions aren't flaky when two jobs are created in the same test
+    within the same timestamp resolution."""
+    job.created_at = timezone.now() - timedelta(minutes=minutes)
+    job.save(update_fields=["created_at"])
+    return job
 
 
 @pytest.fixture
@@ -33,8 +44,15 @@ class TestProcessingStatusView:
     def test_returns_the_latest_job_for_the_document(self, member_client):
         api_client, workspace, _ = member_client
         document = DocumentFactory(workspace=workspace)
-        ProcessingJobFactory(document=document, workspace=workspace, stage=ProcessingStage.FAILED)
-        latest = ProcessingJobFactory(document=document, workspace=workspace, stage=ProcessingStage.RUNNING_OCR)
+        _age(
+            ProcessingJobFactory(
+                document=document, workspace=workspace, stage=ProcessingStage.FAILED
+            ),
+            minutes=5,
+        )
+        latest = ProcessingJobFactory(
+            document=document, workspace=workspace, stage=ProcessingStage.RUNNING_OCR
+        )
 
         response = api_client.get(
             reverse("document-processing-status", args=[workspace.id, document.id])
@@ -115,7 +133,10 @@ class TestProcessingRetryView:
         other_workspace = WorkspaceFactory()
         other_document = DocumentFactory(workspace=other_workspace)
         ProcessingJobFactory(
-            document=other_document, workspace=other_workspace, stage=ProcessingStage.FAILED, is_retryable=True
+            document=other_document,
+            workspace=other_workspace,
+            stage=ProcessingStage.FAILED,
+            is_retryable=True,
         )
 
         response = api_client.post(

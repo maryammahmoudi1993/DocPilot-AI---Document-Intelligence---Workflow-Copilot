@@ -9,10 +9,12 @@ the pipeline here — this file tests scheduling/idempotency decisions
 only, not pipeline behavior (see test_tasks.py for that).
 """
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from apps.audit.models import AuditEvent
 from apps.processing import services
@@ -20,9 +22,19 @@ from apps.processing.models import ProcessingJob, ProcessingStage
 from tests.factories import DocumentFactory, ProcessingJobFactory, UserFactory
 
 
+def _age(job: ProcessingJob, minutes: int) -> ProcessingJob:
+    """Backdates a job's auto_now_add created_at — see the identical
+    helper in test_views.py for why this is needed."""
+    job.created_at = timezone.now() - timedelta(minutes=minutes)
+    job.save(update_fields=["created_at"])
+    return job
+
+
 @pytest.mark.django_db
 class TestEnqueueProcessing:
-    def test_creates_a_job_and_schedules_the_pipeline_task(self, django_capture_on_commit_callbacks):
+    def test_creates_a_job_and_schedules_the_pipeline_task(
+        self, django_capture_on_commit_callbacks
+    ):
         document = DocumentFactory()
 
         with patch("apps.processing.services.run_processing_pipeline.delay") as delay:
@@ -52,7 +64,9 @@ class TestEnqueueProcessing:
         self, django_capture_on_commit_callbacks
     ):
         document = DocumentFactory()
-        ProcessingJobFactory(document=document, workspace=document.workspace, stage=ProcessingStage.COMPLETED)
+        ProcessingJobFactory(
+            document=document, workspace=document.workspace, stage=ProcessingStage.COMPLETED
+        )
 
         with patch("apps.processing.services.run_processing_pipeline.delay"):
             with django_capture_on_commit_callbacks(execute=True):
@@ -113,8 +127,15 @@ class TestRetryProcessing:
 @pytest.mark.django_db
 def test_get_latest_processing_job_returns_the_most_recent_one():
     document = DocumentFactory()
-    ProcessingJobFactory(document=document, workspace=document.workspace, stage=ProcessingStage.FAILED)
-    latest = ProcessingJobFactory(document=document, workspace=document.workspace, stage=ProcessingStage.COMPLETED)
+    _age(
+        ProcessingJobFactory(
+            document=document, workspace=document.workspace, stage=ProcessingStage.FAILED
+        ),
+        minutes=5,
+    )
+    latest = ProcessingJobFactory(
+        document=document, workspace=document.workspace, stage=ProcessingStage.COMPLETED
+    )
 
     result = services.get_latest_processing_job(document=document)
 
