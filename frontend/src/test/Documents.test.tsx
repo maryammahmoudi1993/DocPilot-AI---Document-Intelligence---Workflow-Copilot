@@ -91,10 +91,13 @@ describe('DocumentsPage — search and filters', () => {
 
     await user.type(screen.getByRole('searchbox', { name: /search documents/i }), 'vendor-contract');
 
-    await waitFor(() => expect(screen.queryByText('acme-invoice-0142.pdf')).not.toBeInTheDocument(), {
-      timeout: 2000,
-    });
-    expect(screen.getByText('vendor-contract-2026.docx')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.queryByText('acme-invoice-0142.pdf')).not.toBeInTheDocument();
+        expect(screen.getByText('vendor-contract-2026.docx')).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
   });
 
   it('filters the list by status', async () => {
@@ -105,8 +108,10 @@ describe('DocumentsPage — search and filters', () => {
     await user.click(screen.getByRole('combobox', { name: /status/i }));
     await user.click(screen.getByRole('option', { name: 'Archived' }));
 
-    await waitFor(() => expect(screen.queryByText('acme-invoice-0142.pdf')).not.toBeInTheDocument());
-    expect(screen.getByText('vendor-contract-2026.docx')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('acme-invoice-0142.pdf')).not.toBeInTheDocument();
+      expect(screen.getByText('vendor-contract-2026.docx')).toBeInTheDocument();
+    });
   });
 });
 
@@ -186,7 +191,8 @@ describe('DocumentsPage — selection and bulk actions', () => {
     expect(await screen.findByText(/1 document selected/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^archive$/i }));
-    await user.click(screen.getByRole('button', { name: /^confirm$/i }));
+    const dialog = await screen.findByRole('dialog', { name: /archive selected documents/i });
+    await user.click(within(dialog).getByRole('button', { name: /^confirm$/i }));
 
     await waitFor(() => expect(screen.queryByText(/1 document selected/i)).not.toBeInTheDocument());
   });
@@ -198,7 +204,8 @@ describe('DocumentsPage — selection and bulk actions', () => {
 
     await user.click(screen.getByRole('checkbox', { name: /select vendor-contract-2026\.docx/i }));
     await user.click(screen.getByRole('button', { name: /^delete$/i }));
-    await user.click(screen.getByRole('button', { name: /^delete$/i, hidden: true }));
+    const dialog = await screen.findByRole('dialog', { name: /delete selected documents/i });
+    await user.click(within(dialog).getByRole('button', { name: /^delete$/i }));
 
     await waitFor(() => expect(screen.queryByText(/1 document selected/i)).not.toBeInTheDocument());
   });
@@ -214,13 +221,15 @@ describe('DocumentsPage — accessibility', () => {
     expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
   });
 
-  it('lets a keyboard user reach the upload dropzone from the toolbar button', async () => {
+  it('opens the upload dialog with the dropzone immediately keyboard-focused', async () => {
     const user = userEvent.setup();
     renderDocuments();
     await screen.findByText('acme-invoice-0142.pdf');
 
     await user.click(screen.getByRole('button', { name: 'Upload Document' }));
-    await user.tab();
-    expect(within(screen.getByRole('dialog')).getByLabelText(/drag and drop files here/i)).toHaveFocus();
+
+    await waitFor(() =>
+      expect(within(screen.getByRole('dialog')).getByLabelText(/drag and drop files here/i)).toHaveFocus(),
+    );
   });
 });
