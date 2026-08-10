@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { config } from '@/config';
+import type { ProcessingJob, ProcessingStage } from '@/features/processing/types';
 import { demoWorkspaces } from './handlers';
 
 const API = config.apiBaseUrl;
@@ -114,7 +115,69 @@ export const documentHandlers = [
     }
     return new HttpResponse(null, { status: 204 });
   }),
+
+  // Default: every document's processing job is already COMPLETED — so
+  // tests that don't care about the async pipeline (most Phase 3
+  // suites) see a single clean request and no ongoing polling. Tests
+  // that DO care override this per-test via processingStatusHandler /
+  // processingSequenceHandler / processingRetryHandler below.
+  http.get(`${API}/workspaces/${WORKSPACE_ID}/documents/:documentId/processing/`, ({ params }) =>
+    HttpResponse.json(buildProcessingJob({ document_id: params.documentId as string, stage: 'completed' })),
+  ),
 ];
+
+function buildProcessingJob(overrides: Partial<ProcessingJob> = {}): ProcessingJob {
+  return {
+    id: 'job-1',
+    document_id: 'doc-new',
+    stage: 'queued',
+    attempt_count: 1,
+    is_retryable: false,
+    error_code: null,
+    error_message: null,
+    document_type: null,
+    total_pages: null,
+    ocr_page_count: 0,
+    stage_history: [],
+    created_at: '2026-08-10T00:00:00Z',
+    started_at: '2026-08-10T00:00:01Z',
+    completed_at: null,
+    ...overrides,
+  };
+}
+
+/** Always answers with the same fixed job — use for a stable single
+ * state (e.g. "always failed", "always completed"). */
+export function processingStatusHandler(overrides: Partial<ProcessingJob> = {}) {
+  return http.get(`${API}/workspaces/${WORKSPACE_ID}/documents/:documentId/processing/`, ({ params }) =>
+    HttpResponse.json(buildProcessingJob({ document_id: params.documentId as string, ...overrides })),
+  );
+}
+
+/** Answers with the next stage in `stages` on each successive GET
+ * (clamped to the last one once exhausted) — simulates the job
+ * progressing across polls without a real backend/Celery worker. */
+export function processingSequenceHandler(stages: ProcessingStage[]) {
+  let callIndex = 0;
+  return http.get(`${API}/workspaces/${WORKSPACE_ID}/documents/:documentId/processing/`, ({ params }) => {
+    const stage = stages[Math.min(callIndex, stages.length - 1)]!;
+    callIndex += 1;
+    return HttpResponse.json(
+      buildProcessingJob({
+        document_id: params.documentId as string,
+        stage,
+        is_retryable: stage === 'failed',
+        error_message: stage === 'failed' ? 'OCR provider unavailable.' : null,
+      }),
+    );
+  });
+}
+
+export function processingRetryHandler(nextStage: ProcessingStage = 'queued') {
+  return http.post(`${API}/workspaces/${WORKSPACE_ID}/documents/:documentId/processing/retry/`, ({ params }) =>
+    HttpResponse.json(buildProcessingJob({ document_id: params.documentId as string, stage: nextStage })),
+  );
+}
 
 export function uploadSuccessHandler() {
   return http.post(`${API}/workspaces/${WORKSPACE_ID}/documents/`, () =>
