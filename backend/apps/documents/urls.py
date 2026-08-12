@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import include, path
 
 from apps.documents.views import (
     DocumentArchiveView,
@@ -27,5 +27,12 @@ urlpatterns = [
         "<uuid:document_id>/processing/retry/",
         DocumentProcessingRetryView.as_view(),
         name="document-processing-retry",
+    ),
+    # Extraction/review — document-scoped for the same reason as
+    # processing above (an extraction only makes sense in the context of
+    # the document it belongs to). See apps.extraction.urls.
+    path(
+        "<uuid:document_id>/extraction/",
+        include("apps.extraction.urls"),
     ),
 ]

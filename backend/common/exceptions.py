@@ -40,6 +40,14 @@ def _stable_code_for(exc: Exception) -> str:
     for exc_class, code in _CODE_BY_EXCEPTION_CLASS.items():
         if isinstance(exc, exc_class):
             return code
+    # App-defined APIException subclasses (e.g.
+    # apps.extraction.exceptions.StaleVersionError) declare their own
+    # stable `default_code` rather than being registered here one by
+    # one — falls through to DRF's generic "error" only when a subclass
+    # hasn't overridden it.
+    default_code = getattr(exc, "default_code", None)
+    if isinstance(default_code, str) and default_code != "error":
+        return default_code
     return "error"
 
 

@@ -2,12 +2,19 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from apps.extraction.views import ExtractionQueueView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("apps.health.urls")),
     path("api/auth/", include("apps.accounts.urls")),
     path("api/workspaces/", include("apps.workspaces.urls")),
     path("api/workspaces/<uuid:workspace_id>/documents/", include("apps.documents.urls")),
+    path(
+        "api/workspaces/<uuid:workspace_id>/extractions/",
+        ExtractionQueueView.as_view(),
+        name="extraction-queue",
+    ),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/docs/",

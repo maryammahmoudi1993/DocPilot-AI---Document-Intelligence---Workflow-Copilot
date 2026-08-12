@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "apps.audit",
     "apps.documents",
     "apps.processing",
+    "apps.extraction",
 ]
 
 # Custom user model, defined before any migration has ever been applied to
