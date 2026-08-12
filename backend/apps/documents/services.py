@@ -94,6 +94,18 @@ def create_document(
             # function returns; processing runs later, out of this
             # request entirely (Phase 4 requirement).
             enqueue_processing(document=document, correlation_id=correlation_id_var.get() or "")
+            # Best-effort: a workflow-dispatch failure must never block
+            # or roll back a successful upload.
+            try:
+                from apps.workflows.services import dispatch_event
+
+                dispatch_event(
+                    workspace_id=str(workspace.id),
+                    event="document_uploaded",
+                    context={"event": "document_uploaded", "document_id": str(document.id)},
+                )
+            except Exception:  # noqa: BLE001 - see comment above
+                pass
     except Exception:
         # The DB row never committed — don't leave an orphaned object in
         # storage with nothing referencing it.

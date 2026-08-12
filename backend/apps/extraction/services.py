@@ -289,4 +289,31 @@ def transition_status(
         workspace=extraction.workspace,
         metadata={"extraction_id": str(extraction.id)},
     )
+
+    if new_status == ExtractionStatus.APPROVED:
+        # Best-effort: a workflow-dispatch failure must never block a
+        # successful approval.
+        try:
+            from apps.workflows.services import dispatch_event
+
+            total_field = extraction.fields.filter(key="total").first()
+            total_value = 0.0
+            if total_field and total_field.normalized_value:
+                try:
+                    total_value = float(total_field.normalized_value)
+                except ValueError:
+                    total_value = 0.0
+            dispatch_event(
+                workspace_id=str(extraction.workspace_id),
+                event="document_approved",
+                context={
+                    "event": "document_approved",
+                    "document_id": str(extraction.document_id),
+                    "total": total_value,
+                    "confidence": extraction.overall_confidence or 1.0,
+                },
+            )
+        except Exception:  # noqa: BLE001 - see comment above
+            pass
+
     return extraction
