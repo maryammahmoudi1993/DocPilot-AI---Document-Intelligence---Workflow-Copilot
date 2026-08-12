@@ -32,6 +32,13 @@ CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = env.int("DJANGO_SECURE_HSTS_SECONDS", default=60 * 60 * 24 * 30)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+# Explicit (matches XFrameOptionsMiddleware's own default) — this app is
+# never embedded in a frame, so deny it outright rather than relying on
+# an unstated default.
+X_FRAME_OPTIONS = "DENY"
+# Never leak the current URL (can contain a document/workspace id) to a
+# cross-origin destination via the Referer header.
+SECURE_REFERRER_POLICY = "same-origin"
 
 if SENTRY_DSN:  # noqa: F405 - imported via base.*
     import sentry_sdk
