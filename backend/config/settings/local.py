@@ -21,6 +21,11 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.
 # requires DJANGO_SECRET_KEY to be set and refuses to start otherwise.
 SECRET_KEY = _BASE_SECRET_KEY or "django-insecure-local-development-only-key"  # noqa: S105
 
+# Fixed dev-only Fernet key so a fresh checkout works without extra setup
+# — never used outside local development (production.py requires a real
+# one; see apps/notifications/crypto.py).
+INTEGRATION_SECRET_KEY = INTEGRATION_SECRET_KEY or "xjnqLuaWBy-MYTPeJUKpEGiIB1W1VbeMBsyYaPfswhc="  # noqa: F405, S105
+
 # The Docker Compose backend/celery-worker images install tesseract-ocr
 # and poppler-utils (see ../../Dockerfile) so real OCR works out of the
 # box in local dev — base.py's "mock" default is for contexts (a bare

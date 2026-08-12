@@ -15,6 +15,13 @@ DEBUG = False
 if not SECRET_KEY:  # noqa: F405 - imported via base.*
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set in production.")
 
+if not INTEGRATION_SECRET_KEY:  # noqa: F405 - imported via base.*
+    raise ImproperlyConfigured(
+        "INTEGRATION_SECRET_KEY must be set in production (generate with "
+        '`python -c "from cryptography.fernet import Fernet; '
+        'print(Fernet.generate_key().decode())"`).'
+    )
+
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 if not ALLOWED_HOSTS:
     raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS must be set in production.")

@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     "apps.extraction",
     "apps.assistant",
     "apps.workflows",
+    "apps.approvals",
+    "apps.notifications",
 ]
 
 # The installed rest_framework_simplejwt.token_blacklist wheel's model
@@ -207,6 +209,18 @@ RAG_MAX_GROUNDING_DISTANCE = env.float("RAG_MAX_GROUNDING_DISTANCE", default=0.9
 # provider for one answer — the documented token budget (see
 # apps/assistant/services.build_context).
 RAG_CONTEXT_BUDGET_CHARS = env.int("RAG_CONTEXT_BUDGET_CHARS", default=6000)
+
+# --- Notifications / integrations (Phase 8) -------------------------------
+# Fernet key encrypting WebhookEndpoint secrets at rest (see
+# apps/notifications/crypto.py). No insecure fallback here even in
+# base.py — local.py supplies a fixed dev-only key so a fresh checkout
+# still works without extra setup; production.py fails fast if unset.
+INTEGRATION_SECRET_KEY = env.str("INTEGRATION_SECRET_KEY", default="")
+# "mock" (deterministic, no network — the default and the only option
+# exercised in tests) or "http" (real signed HTTP POST) for webhook
+# delivery; email is always the "log" adapter in this project (no real
+# email provider is configured — see docs/adr).
+NOTIFICATION_WEBHOOK_PROVIDER = env.str("NOTIFICATION_WEBHOOK_PROVIDER", default="mock")
 
 # --- Workflow engine (Phase 7) -------------------------------------------
 # "mock" (deterministic, no network — the default and the only option

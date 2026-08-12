@@ -46,3 +46,8 @@ LOGGING_CONFIG = None  # keep test output quiet; re-enable per-test if needed
 # in-test retry simulation entirely (see test_tasks.py's retry tests).
 CELERY_TASK_ALWAYS_EAGER = True
 DOCUMENT_OCR_PROVIDER = "mock"
+
+# Fixed test-only Fernet key (see apps/notifications/crypto.py) — never
+# used outside test settings.
+INTEGRATION_SECRET_KEY = "xjnqLuaWBy-MYTPeJUKpEGiIB1W1VbeMBsyYaPfswhc="  # noqa: S105
+NOTIFICATION_WEBHOOK_PROVIDER = "mock"
