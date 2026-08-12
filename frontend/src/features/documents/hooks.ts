@@ -15,6 +15,14 @@ export function useDocuments(workspaceId: string | undefined, params: DocumentLi
   });
 }
 
+export function useDocument(workspaceId: string | undefined, documentId: string | undefined) {
+  return useQuery({
+    queryKey: ['documents', workspaceId, documentId],
+    queryFn: () => documentsApi.getDocument(workspaceId!, documentId!),
+    enabled: Boolean(workspaceId && documentId),
+  });
+}
+
 export function useDownloadDocument(workspaceId: string | undefined) {
   return useMutation({
     mutationFn: (documentId: string) => documentsApi.getDocument(workspaceId!, documentId),
