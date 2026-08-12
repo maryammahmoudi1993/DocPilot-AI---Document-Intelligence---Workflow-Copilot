@@ -6,6 +6,7 @@ from apps.assistant.models import Conversation, DocumentChunk
 from apps.documents.models import Document
 from apps.extraction.models import DocumentExtraction, ExtractedField, ExtractionStatus
 from apps.processing.models import ProcessingJob, ProcessingStage
+from apps.workflows.models import Workflow
 from apps.workspaces.models import Role, Workspace, WorkspaceMembership
 
 DEFAULT_PASSWORD = "test-pass-only-123!"  # noqa: S105 - fixture-only, not a real credential
@@ -113,3 +114,12 @@ class DocumentChunkFactory(DjangoModelFactory):
     page_number = 1
     text = "Sample indexed text."
     embedding = factory.LazyFunction(lambda: [0.0] * 256)
+
+
+class WorkflowFactory(DjangoModelFactory):
+    class Meta:
+        model = Workflow
+
+    workspace = factory.SubFactory(WorkspaceFactory)
+    name = factory.Sequence(lambda n: f"Workflow {n}")
+    created_by = factory.SubFactory(UserFactory)
