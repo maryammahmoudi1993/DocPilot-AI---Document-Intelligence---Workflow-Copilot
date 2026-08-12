@@ -49,7 +49,12 @@ test.describe('AppShell — responsive and keyboard behavior', () => {
     await page.goto('/app/dashboard');
 
     await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
-    await expect(page.getByRole('main')).toContainText('Dashboard');
+    // The Dashboard page's own heading is a personalized greeting, not
+    // the literal word "Dashboard" (that's the sidebar nav item's
+    // label, already asserted above) — "Recent documents" is static
+    // content on the page regardless of whether its data queries
+    // (unmocked here) succeed or fail.
+    await expect(page.getByRole('main')).toContainText('Recent documents');
   });
 
   test('mobile navigation drawer opens and traps focus at 768px', async ({ page }) => {

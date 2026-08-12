@@ -39,6 +39,10 @@ describe('product route placeholders', () => {
     // DashboardPage), not the literal word "Dashboard" — the sidebar nav
     // item still is, which is what NAV_ITEMS.each above already checks;
     // here we only need proof this path lands on the dashboard route.
-    expect(await screen.findByRole('main')).toHaveTextContent(/documents/i);
+    // Waited for by content, not `getByRole('main')` — the shell's
+    // <main> exists immediately, but Dashboard itself is a lazy-loaded
+    // route (see App.tsx) and briefly renders the Suspense fallback
+    // first.
+    expect(await screen.findByText('Recent documents')).toBeInTheDocument();
   });
 });
