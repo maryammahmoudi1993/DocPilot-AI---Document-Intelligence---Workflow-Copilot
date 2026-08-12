@@ -1,7 +1,14 @@
 import '@testing-library/jest-dom';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect } from 'vitest';
+import { toHaveNoViolations } from 'jest-axe';
 import { server } from '@/mocks/server';
 import { setAccessToken } from '@/stores/authTokenStore';
+
+// jest-axe's matcher is framework-agnostic (just `expect.extend`) and
+// works identically under Vitest's Jest-compatible `expect` — see
+// src/test/*.test.tsx files using `axe()`/`toHaveNoViolations()` for
+// per-page automated accessibility scans.
+expect.extend(toHaveNoViolations);
 
 // Every test hits the real API contract shape via MSW rather than
 // hand-mocked fetch — see src/mocks/handlers.ts. Unhandled requests
