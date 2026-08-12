@@ -5,6 +5,7 @@ from apps.workspaces.views import (
     MembershipListCreateView,
     TransferOwnershipView,
     WorkspaceListView,
+    WorkspaceSettingsView,
 )
 
 urlpatterns = [
@@ -21,5 +22,10 @@ urlpatterns = [
         "<uuid:workspace_id>/transfer-ownership/",
         TransferOwnershipView.as_view(),
         name="workspace-transfer-ownership",
+    ),
+    path(
+        "<uuid:workspace_id>/settings/",
+        WorkspaceSettingsView.as_view(),
+        name="workspace-settings",
     ),
 ]

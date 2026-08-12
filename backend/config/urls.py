@@ -40,6 +40,10 @@ urlpatterns = [
         "api/workspaces/<uuid:workspace_id>/audit-events/",
         include("apps.audit.urls"),
     ),
+    path(
+        "api/workspaces/<uuid:workspace_id>/",
+        include("apps.analytics.urls"),
+    ),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/docs/",

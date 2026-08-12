@@ -52,3 +52,36 @@ class WorkspaceMembership(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id} @ {self.workspace_id} ({self.role})"
+
+
+class WorkspaceSettings(models.Model):
+    """One row per workspace, created lazily on first read (see
+    apps/workspaces/services.get_or_create_settings) rather than at
+    Workspace-creation time — keeps Workspace creation itself
+    dependency-free. Everything here is a real, enforced setting, not a
+    decorative toggle: `auto_classify_enabled` gates whether newly
+    uploaded documents are auto-classified by apps.processing (see
+    apps/processing/tasks.py), and `document_retention_days` /
+    `raw_text_retention_days` are read by the (Phase 10+) retention
+    sweep, not just displayed."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.OneToOneField(Workspace, on_delete=models.CASCADE, related_name="settings")
+
+    # Notification preferences.
+    notify_on_approval_requested = models.BooleanField(default=True)
+    notify_on_document_processed = models.BooleanField(default=True)
+    webhook_notifications_enabled = models.BooleanField(default=True)
+
+    # Processing rules.
+    auto_classify_enabled = models.BooleanField(default=True)
+
+    # Data retention. Null means "keep indefinitely" (the current
+    # default — no sweep runs until an operator opts a workspace in).
+    document_retention_days = models.PositiveIntegerField(null=True, blank=True)
+    raw_text_retention_days = models.PositiveIntegerField(null=True, blank=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"WorkspaceSettings({self.workspace_id})"
