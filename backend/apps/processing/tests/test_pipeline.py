@@ -9,6 +9,7 @@ for the orchestrator that wires these together against a real DB.
 import pytest
 
 from apps.documents.models import Document
+from apps.extraction.models import DocumentExtraction
 from apps.processing import pipeline
 from apps.processing.exceptions import ValidationProcessingError
 from apps.processing.models import ProcessingJob
@@ -20,6 +21,7 @@ from apps.processing.tests.pdf_fixtures import (
     password_protected_pdf_bytes,
     scanned_pdf_bytes,
 )
+from tests.factories import ProcessingJobFactory
 
 
 def _job(*, content_type: str = "application/pdf", filename: str = "invoice.pdf") -> ProcessingJob:
@@ -140,3 +142,33 @@ class TestStageClassify:
 
         assert job.document_type == "invoice"
         assert provider.calls == [("acme-invoice.pdf", "some extracted text")]
+
+
+@pytest.mark.django_db
+class TestStageExtractFields:
+    def test_non_invoice_documents_are_skipped_entirely(self):
+        job = ProcessingJobFactory()
+        job.document_type = "contract"
+
+        pipeline.stage_extract_fields(job, "Vendor Name: Acme\nTotal: 1.00\n")
+
+        assert not DocumentExtraction.objects.filter(document=job.document).exists()
+
+    def test_an_extraction_service_failure_does_not_raise(self, monkeypatch):
+        job = ProcessingJobFactory()
+        job.document_type = "invoice"
+
+        def _boom(*args, **kwargs):
+            raise RuntimeError("provider exploded")
+
+        monkeypatch.setattr("apps.extraction.services.build_extraction_for_job", _boom)
+
+        pipeline.stage_extract_fields(job, "Total: 1.00")  # must not raise
+
+    def test_an_invoice_document_creates_an_extraction(self):
+        job = ProcessingJobFactory()
+        job.document_type = "invoice"
+
+        pipeline.stage_extract_fields(job, "Invoice Number: INV-1\nTotal: 10.00\n")
+
+        assert DocumentExtraction.objects.filter(document=job.document).exists()

@@ -3,6 +3,7 @@ from factory.django import DjangoModelFactory
 
 from apps.accounts.models import User
 from apps.documents.models import Document
+from apps.extraction.models import DocumentExtraction, ExtractedField, ExtractionStatus
 from apps.processing.models import ProcessingJob, ProcessingStage
 from apps.workspaces.models import Role, Workspace, WorkspaceMembership
 
@@ -68,3 +69,26 @@ class ProcessingJobFactory(DjangoModelFactory):
     document = factory.SubFactory(DocumentFactory)
     workspace = factory.LazyAttribute(lambda o: o.document.workspace)
     stage = ProcessingStage.QUEUED
+
+
+class DocumentExtractionFactory(DjangoModelFactory):
+    class Meta:
+        model = DocumentExtraction
+
+    document = factory.SubFactory(DocumentFactory)
+    workspace = factory.LazyAttribute(lambda o: o.document.workspace)
+    document_type = "invoice"
+    status = ExtractionStatus.PENDING_REVIEW
+
+
+class ExtractedFieldFactory(DjangoModelFactory):
+    class Meta:
+        model = ExtractedField
+
+    extraction = factory.SubFactory(DocumentExtractionFactory)
+    key = "total"
+    label = "Total"
+    display_value = "100.00"
+    normalized_value = "100.00"
+    confidence = 0.9
+    is_required = True
