@@ -15,10 +15,12 @@ async function loadPdfjs() {
 
 export interface PDFViewerProps {
   fileUrl: string;
-  /** Page + normalized (0..1) box to highlight — set when the selected
-   * extraction field carries source coordinates. Absent for fields the
-   * provider didn't localize; the viewer works fine without it. */
-  highlight?: { page: number; box: BoundingBox } | null;
+  /** Page to jump to, with an optional normalized (0..1) box to
+   * highlight on it — set when the selected extraction field or
+   * citation carries source coordinates. `box` is omitted for sources
+   * the provider didn't localize (page-level only); the viewer works
+   * fine either way. */
+  highlight?: { page: number; box?: BoundingBox } | null;
 }
 
 const MIN_SCALE = 0.5;
@@ -68,7 +70,9 @@ export function PDFViewer({ fileUrl, highlight }: PDFViewerProps) {
   // — adjusted during render (React's documented pattern for deriving
   // state from a changed prop) rather than in an effect, so the page
   // updates in the same commit as the selection instead of one tick later.
-  const highlightKey = highlight ? `${highlight.page}:${highlight.box.x}:${highlight.box.y}` : null;
+  const highlightKey = highlight
+    ? `${highlight.page}:${highlight.box?.x ?? ''}:${highlight.box?.y ?? ''}`
+    : null;
   const [lastHighlightKey, setLastHighlightKey] = useState<string | null>(null);
   if (highlightKey !== lastHighlightKey) {
     setLastHighlightKey(highlightKey);
@@ -91,13 +95,14 @@ export function PDFViewer({ fileUrl, highlight }: PDFViewerProps) {
       await page.render({ canvasContext: context, viewport, canvas }).promise;
       if (cancelled) return;
 
-      if (highlight && highlight.page === pageNumber) {
+      if (highlight?.box && highlight.page === pageNumber) {
+        const box = highlight.box;
         setOverlayStyle({
           position: 'absolute',
-          left: `${highlight.box.x * viewport.width}px`,
-          top: `${highlight.box.y * viewport.height}px`,
-          width: `${highlight.box.width * viewport.width}px`,
-          height: `${highlight.box.height * viewport.height}px`,
+          left: `${box.x * viewport.width}px`,
+          top: `${box.y * viewport.height}px`,
+          width: `${box.width * viewport.width}px`,
+          height: `${box.height * viewport.height}px`,
         });
       } else {
         setOverlayStyle(null);
