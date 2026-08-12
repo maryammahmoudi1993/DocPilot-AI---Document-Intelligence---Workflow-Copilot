@@ -13,6 +13,7 @@ import { AccessDeniedPage } from './pages/AccessDenied';
 import { DashboardPage } from './pages/Dashboard';
 import { DocumentsPage } from './pages/Documents';
 import { ReviewQueuePage } from './pages/ReviewQueue';
+import { DocumentReviewPage } from './pages/DocumentReview';
 import { AiAssistantPage } from './pages/AiAssistant';
 import { WorkflowBuilderPage } from './pages/WorkflowBuilder';
 import { ApprovalsPage } from './pages/Approvals';
@@ -54,6 +55,7 @@ function App() {
                   <Route path="dashboard" element={<DashboardPage />} />
                   <Route path="documents" element={<DocumentsPage />} />
                   <Route path="review-queue" element={<ReviewQueuePage />} />
+                  <Route path="documents/:documentId/review" element={<DocumentReviewPage />} />
                   <Route path="assistant" element={<AiAssistantPage />} />
                   <Route path="workflows" element={<WorkflowBuilderPage />} />
                   <Route path="approvals" element={<ApprovalsPage />} />
