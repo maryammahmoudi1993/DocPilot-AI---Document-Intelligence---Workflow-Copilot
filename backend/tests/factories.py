@@ -2,9 +2,11 @@ import factory
 from factory.django import DjangoModelFactory
 
 from apps.accounts.models import User
+from apps.approvals.models import ApprovalRequest
 from apps.assistant.models import Conversation, DocumentChunk
 from apps.documents.models import Document
 from apps.extraction.models import DocumentExtraction, ExtractedField, ExtractionStatus
+from apps.notifications.models import Notification, WebhookEndpoint
 from apps.processing.models import ProcessingJob, ProcessingStage
 from apps.workflows.models import Workflow
 from apps.workspaces.models import Role, Workspace, WorkspaceMembership
@@ -123,3 +125,41 @@ class WorkflowFactory(DjangoModelFactory):
     workspace = factory.SubFactory(WorkspaceFactory)
     name = factory.Sequence(lambda n: f"Workflow {n}")
     created_by = factory.SubFactory(UserFactory)
+
+
+class ApprovalRequestFactory(DjangoModelFactory):
+    class Meta:
+        model = ApprovalRequest
+
+    workspace = factory.SubFactory(WorkspaceFactory)
+    title = factory.Sequence(lambda n: f"Approval {n}")
+    risk_level = "low"
+    assigned_role = Role.ADMIN
+    requested_by = factory.SubFactory(UserFactory)
+
+
+class WebhookEndpointFactory(DjangoModelFactory):
+    class Meta:
+        model = WebhookEndpoint
+        skip_postgeneration_save = True
+
+    workspace = factory.SubFactory(WorkspaceFactory)
+    name = factory.Sequence(lambda n: f"Endpoint {n}")
+    url = "https://example.com/hooks/docpilot"
+    is_active = True
+
+    @factory.post_generation
+    def secret(self, create, extracted, **kwargs):
+        self.set_secret(extracted or "a-shared-webhook-secret")
+        if create:
+            self.save(update_fields=["encrypted_secret"])
+
+
+class NotificationFactory(DjangoModelFactory):
+    class Meta:
+        model = Notification
+
+    workspace = factory.SubFactory(WorkspaceFactory)
+    user = factory.SubFactory(UserFactory)
+    event_type = "approval.requested"
+    title = factory.Sequence(lambda n: f"Notification {n}")
