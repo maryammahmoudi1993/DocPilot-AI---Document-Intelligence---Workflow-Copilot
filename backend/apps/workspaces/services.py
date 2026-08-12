@@ -10,7 +10,13 @@ from django.db import transaction
 
 from apps.accounts.models import User
 from apps.audit.services import record_event
-from apps.workspaces.models import ASSIGNABLE_ROLES, Role, Workspace, WorkspaceMembership
+from apps.workspaces.models import (
+    ASSIGNABLE_ROLES,
+    Role,
+    Workspace,
+    WorkspaceMembership,
+    WorkspaceSettings,
+)
 
 
 def add_member(
@@ -108,6 +114,35 @@ def transfer_ownership(
                 "new_owner_user_id": new_owner_membership.user_id,
             },
         )
+
+
+def get_or_create_settings(*, workspace: Workspace) -> WorkspaceSettings:
+    settings_row, _ = WorkspaceSettings.objects.get_or_create(workspace=workspace)
+    return settings_row
+
+
+def update_settings(
+    *, workspace: Workspace, actor_membership: WorkspaceMembership, **fields
+) -> WorkspaceSettings:
+    for key in ("document_retention_days", "raw_text_retention_days"):
+        value = fields.get(key)
+        if value is not None and value < 1:
+            raise ValidationError({key: "Must be at least 1 day, or null to disable retention."})
+
+    with transaction.atomic():
+        settings_row, _ = WorkspaceSettings.objects.select_for_update().get_or_create(
+            workspace=workspace
+        )
+        for key, value in fields.items():
+            setattr(settings_row, key, value)
+        settings_row.save(update_fields=[*fields.keys(), "updated_at"])
+        record_event(
+            event_type="workspace.settings_updated",
+            actor=actor_membership.user,
+            workspace=workspace,
+            metadata={"fields": sorted(fields.keys())},
+        )
+    return settings_row
 
 
 def set_active_workspace(*, user: User, workspace_id) -> Workspace:

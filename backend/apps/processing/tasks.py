@@ -22,6 +22,7 @@ from apps.processing import pipeline
 from apps.processing.exceptions import ProcessingError
 from apps.processing.models import TERMINAL_STAGES, ProcessingJob, ProcessingStage
 from apps.processing.providers import get_classification_provider, get_ocr_provider
+from apps.workspaces.services import get_or_create_settings
 from common.logging import correlation_id_var
 
 logger = logging.getLogger(__name__)
@@ -97,9 +98,17 @@ def _run(task, job: ProcessingJob) -> None:  # noqa: ANN001
             _append_history(job, job.stage, "completed", detail=ocr_detail)
 
         job.stage = ProcessingStage.CLASSIFYING
-        _append_history(job, job.stage, "started")
-        pipeline.stage_classify(job, combined_text, get_classification_provider())
-        _append_history(job, job.stage, "completed", detail=str(job.document_type))
+        # Workspace-configurable (Settings page → processing rules,
+        # apps.workspaces.WorkspaceSettings.auto_classify_enabled) — a
+        # workspace that has turned auto-classification off keeps every
+        # later stage running normally, just with document_type left at
+        # its UNKNOWN default for a human to set instead.
+        if get_or_create_settings(workspace=job.workspace).auto_classify_enabled:
+            _append_history(job, job.stage, "started")
+            pipeline.stage_classify(job, combined_text, get_classification_provider())
+            _append_history(job, job.stage, "completed", detail=str(job.document_type))
+        else:
+            _append_history(job, job.stage, "skipped", detail="auto-classification disabled")
 
         # Safe retention rule: only a bounded excerpt is ever persisted,
         # never the full extracted/OCR'd text — see ProcessingJob's

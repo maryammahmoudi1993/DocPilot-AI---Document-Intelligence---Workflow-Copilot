@@ -8,7 +8,7 @@ querying the model directly.
 """
 
 from apps.accounts.models import User
-from apps.workspaces.models import Workspace, WorkspaceMembership
+from apps.workspaces.models import Workspace, WorkspaceMembership, WorkspaceSettings
 
 
 def get_membership(user: User, workspace_id) -> WorkspaceMembership | None:
@@ -32,3 +32,7 @@ def get_workspace_members(workspace_id):
         .select_related("user")
         .order_by("created_at")
     )
+
+
+def get_settings(workspace_id) -> WorkspaceSettings | None:
+    return WorkspaceSettings.objects.filter(workspace_id=workspace_id).first()

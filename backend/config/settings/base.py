@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.workflows",
     "apps.approvals",
     "apps.notifications",
+    "apps.analytics",
 ]
 
 # The installed rest_framework_simplejwt.token_blacklist wheel's model

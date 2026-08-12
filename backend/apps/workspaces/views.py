@@ -22,6 +22,8 @@ from apps.workspaces.serializers import (
     MembershipSerializer,
     TransferOwnershipSerializer,
     WorkspaceSerializer,
+    WorkspaceSettingsSerializer,
+    WorkspaceSettingsUpdateSerializer,
 )
 
 
@@ -87,6 +89,37 @@ class MembershipDetailView(APIView):
             membership=membership, actor_membership=get_workspace_membership(request)
         )
         return Response(status=204)
+
+
+class WorkspaceSettingsView(APIView):
+    """GET is available to any member (settings inform what they should
+    expect, e.g. retention); PATCH is manager-only (see
+    IsWorkspaceManager)."""
+
+    def get_permissions(self):
+        if self.request.method == "PATCH":
+            return [IsWorkspaceManager()]
+        return [IsWorkspaceMember()]
+
+    @extend_schema(responses={200: WorkspaceSettingsSerializer})
+    def get(self, request: Request, workspace_id) -> Response:
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        settings_row = services.get_or_create_settings(workspace=workspace)
+        return Response(WorkspaceSettingsSerializer(settings_row).data)
+
+    @extend_schema(
+        request=WorkspaceSettingsUpdateSerializer, responses={200: WorkspaceSettingsSerializer}
+    )
+    def patch(self, request: Request, workspace_id) -> Response:
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        serializer = WorkspaceSettingsUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        settings_row = services.update_settings(
+            workspace=workspace,
+            actor_membership=get_workspace_membership(request),
+            **serializer.validated_data,
+        )
+        return Response(WorkspaceSettingsSerializer(settings_row).data)
 
 
 class TransferOwnershipView(APIView):
