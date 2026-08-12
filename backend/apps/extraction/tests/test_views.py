@@ -29,6 +29,43 @@ def _client_with_role(api_client, workspace, role):
 
 
 @pytest.mark.django_db
+class TestExtractionQueueView:
+    def test_lists_only_pending_review_extractions(self, api_client, workspace):
+        pending_doc = DocumentFactory(workspace=workspace)
+        DocumentExtractionFactory(
+            document=pending_doc, workspace=workspace, status=ExtractionStatus.PENDING_REVIEW
+        )
+        approved_doc = DocumentFactory(workspace=workspace)
+        DocumentExtractionFactory(
+            document=approved_doc, workspace=workspace, status=ExtractionStatus.APPROVED
+        )
+        _client_with_role(api_client, workspace, Role.VIEWER)
+
+        response = api_client.get(reverse("extraction-queue", args=[workspace.id]))
+
+        assert response.status_code == 200
+        ids = {row["document_id"] for row in response.data}
+        assert pending_doc.id in ids
+        assert approved_doc.id not in ids
+
+    def test_another_workspaces_queue_is_not_visible(self, api_client, workspace):
+        other_workspace = WorkspaceFactory()
+        other_doc = DocumentFactory(workspace=other_workspace)
+        DocumentExtractionFactory(document=other_doc, workspace=other_workspace)
+        _client_with_role(api_client, workspace, Role.VIEWER)
+
+        response = api_client.get(reverse("extraction-queue", args=[workspace.id]))
+
+        assert response.status_code == 200
+        assert response.data == []
+
+    def test_anonymous_is_rejected(self, api_client, workspace):
+        response = api_client.get(reverse("extraction-queue", args=[workspace.id]))
+
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
 class TestDocumentExtractionDetailView:
     def test_returns_the_extraction_with_fields_and_issues(self, api_client, workspace):
         document = DocumentFactory(workspace=workspace)

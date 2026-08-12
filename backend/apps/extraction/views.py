@@ -7,10 +7,11 @@ from rest_framework.views import APIView
 from apps.documents.models import Document
 from apps.extraction import services
 from apps.extraction.models import ExtractedField
-from apps.extraction.selectors import get_workspace_extraction
+from apps.extraction.selectors import get_pending_review_extractions, get_workspace_extraction
 from apps.extraction.serializers import (
     DocumentExtractionSerializer,
     ExtractedFieldSerializer,
+    ExtractionQueueItemSerializer,
     FieldCorrectionRequestSerializer,
     StatusTransitionRequestSerializer,
 )
@@ -22,6 +23,19 @@ _CAN_CORRECT_ROLES = {Role.OWNER, Role.ADMIN, Role.FINANCE_MANAGER, Role.REVIEWE
 # Only finance/admin/owner can give final approval — matches the
 # "high-value approval" role in the primary demo flow.
 _CAN_APPROVE_ROLES = {Role.OWNER, Role.ADMIN, Role.FINANCE_MANAGER}
+
+
+class ExtractionQueueView(APIView):
+    """Workspace-wide Review Queue — every extraction still awaiting a
+    decision. Deliberately unpaginated (demo-scale: a handful of pending
+    invoices, not a production-scale backlog)."""
+
+    permission_classes = [IsWorkspaceMember]
+
+    @extend_schema(responses=ExtractionQueueItemSerializer(many=True))
+    def get(self, request: Request, workspace_id: str) -> Response:
+        extractions = get_pending_review_extractions(workspace_id=workspace_id)
+        return Response(ExtractionQueueItemSerializer(extractions, many=True).data)
 
 
 class DocumentExtractionDetailView(APIView):

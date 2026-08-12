@@ -80,6 +80,32 @@ class DocumentExtractionSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ExtractionQueueItemSerializer(serializers.ModelSerializer):
+    """Lightweight row shape for the Review Queue list — no fields/
+    corrections payload, just enough to render the queue and link into
+    the full detail view."""
+
+    filename = serializers.CharField(source="document.filename", read_only=True)
+    error_issue_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentExtraction
+        fields = [
+            "id",
+            "document_id",
+            "filename",
+            "document_type",
+            "status",
+            "overall_confidence",
+            "error_issue_count",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_error_issue_count(self, obj: DocumentExtraction) -> int:
+        return sum(1 for issue in obj.issues.all() if issue.severity == "error")
+
+
 class FieldCorrectionRequestSerializer(serializers.Serializer):
     value = serializers.CharField(allow_blank=True, max_length=500)
     reason = serializers.CharField(allow_blank=True, required=False, default="", max_length=255)
