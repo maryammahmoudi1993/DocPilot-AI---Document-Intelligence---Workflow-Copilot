@@ -31,14 +31,6 @@ logger = logging.getLogger(__name__)
 # — this is a portfolio-scale pipeline, not a tunable production queue.
 MAX_ATTEMPTS = 3
 
-# Phase 6 owns real semantic indexing — this phase only transitions
-# through it, recording *why* nothing happened rather than fabricating
-# an indexing result (project rule: do not fake working behavior in the
-# final demo).
-_DEFERRED_STAGES: list[tuple[str, str]] = [
-    (ProcessingStage.INDEXING, "Deferred to Phase 6 (RAG indexing)."),
-]
-
 
 def _append_history(job: ProcessingJob, stage: str, status: str, detail: str = "") -> None:
     # `detail` must stay short and safe (a count, a stage name, an error
@@ -91,9 +83,15 @@ def _run(task, job: ProcessingJob) -> None:  # noqa: ANN001
 
         job.stage = ProcessingStage.RUNNING_OCR
         _append_history(job, job.stage, "started" if ocr_page_numbers else "skipped")
-        combined_text = pipeline.stage_run_ocr(
-            job, file_bytes, digital_text, ocr_page_numbers, get_ocr_provider()
+        # Computed once, page-attributed, and reused for both the
+        # combined text below (classification/extraction) and indexing
+        # further down — deliberately not calling stage_run_ocr here as
+        # well, which would call the OCR provider a second time for the
+        # same pages (real cost against a real OCR provider).
+        page_texts = pipeline.build_page_texts(
+            job, file_bytes, ocr_page_numbers, get_ocr_provider()
         )
+        combined_text = "\n".join(text for _, text in page_texts)
         if ocr_page_numbers:
             ocr_detail = f"{len(ocr_page_numbers)} page(s) OCR'd"
             _append_history(job, job.stage, "completed", detail=ocr_detail)
@@ -121,9 +119,10 @@ def _run(task, job: ProcessingJob) -> None:  # noqa: ANN001
         job.stage = ProcessingStage.SCORING_CONFIDENCE
         _append_history(job, job.stage, "completed", detail="performed within extracting_fields")
 
-        for stage, detail in _DEFERRED_STAGES:
-            job.stage = stage
-            _append_history(job, job.stage, "skipped", detail=detail)
+        job.stage = ProcessingStage.INDEXING
+        _append_history(job, job.stage, "started")
+        chunk_count = pipeline.stage_index(job, page_texts)
+        _append_history(job, job.stage, "completed", detail=f"{chunk_count} chunk(s)")
 
         job.stage = ProcessingStage.COMPLETED
         job.completed_at = timezone.now()

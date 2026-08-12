@@ -135,6 +135,65 @@ def stage_classify(
     )
 
 
+def build_page_texts(
+    job: ProcessingJob, file_bytes: bytes, ocr_page_numbers: list[int], provider: OCRProvider
+) -> list[tuple[int, str]]:
+    """Re-derives per-page text for indexing (Phase 6) — deliberately
+    separate from stage_extract_text/stage_run_ocr above rather than
+    changing their return shape: those two are stable, already-tested
+    Phase 4 contracts (classification/extraction only ever needed the
+    *combined* text), and indexing is the first consumer that needs text
+    attributed to a specific page number. Re-parsing the PDF a second
+    time is cheap at this project's scale and keeps every earlier stage
+    untouched. Returns 1-based (page_number, text) pairs in page order;
+    pages with no usable text (empty digital layer and no OCR requested)
+    are omitted rather than yielding an empty chunk."""
+    content_type = job.document.content_type
+
+    if content_type == PDF_CONTENT_TYPE:
+        reader = PdfReader(io.BytesIO(file_bytes))
+        pages: list[tuple[int, str]] = []
+        for index, page in enumerate(reader.pages, start=1):
+            if index in ocr_page_numbers:
+                text = provider.extract_text_from_page(pdf_bytes=file_bytes, page_number=index)
+            else:
+                text = (page.extract_text() or "").strip()
+            if text:
+                pages.append((index, text))
+        return pages
+
+    if content_type.startswith("image/") and ocr_page_numbers:
+        text = provider.extract_text_from_image(image_bytes=file_bytes)
+        return [(1, text)] if text else []
+
+    return []
+
+
+def stage_index(job: ProcessingJob, page_texts: list[tuple[int, str]]) -> int:
+    """Builds this document's semantic-search chunk index (Phase 6) from
+    the same page-attributed text the RUNNING_OCR stage already produced
+    (see build_page_texts) — every document type, not just invoices (RAG
+    should cover contracts, receipts, policies, reports too). Never
+    raises, same rationale as stage_extract_fields: indexing failure
+    must not fail the surrounding processing job. Returns the chunk
+    count for the stage-history detail string."""
+    from apps.assistant.providers import get_embedding_provider
+    from apps.assistant.services import index_document
+
+    try:
+        chunks = index_document(
+            job.document, page_texts=page_texts, provider=get_embedding_provider()
+        )
+        return len(chunks)
+    except Exception:  # noqa: BLE001 - see docstring: indexing failure must not fail the job
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "indexing_stage_failed", extra={"job_id": str(job.id)}
+        )
+        return 0
+
+
 def stage_extract_fields(job: ProcessingJob, combined_text: str) -> None:
     """Delegates to apps.extraction (Phase 5) for invoice documents only
     — this phase's explicit schema scope (see
