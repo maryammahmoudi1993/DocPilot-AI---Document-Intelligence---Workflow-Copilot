@@ -33,3 +33,22 @@ if (!Element.prototype.releasePointerCapture) {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => {};
 }
+
+// jsdom has no real layout engine, so it doesn't implement matchMedia
+// either — components using useMediaQuery (e.g. DocumentReviewPage's
+// split/tabbed responsive layout) need a callable stand-in. Defaults to
+// "no match" (narrow-viewport behavior); tests that care about the
+// wide-viewport branch stub this per-test instead.
+if (typeof window.matchMedia !== 'function') {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
+}
