@@ -44,6 +44,25 @@ INSTALLED_APPS = [
     "apps.extraction",
 ]
 
+# The installed rest_framework_simplejwt.token_blacklist wheel's model
+# Meta has drifted from its own shipped migrations (harmless — ordering/
+# verbose_name only, no schema change) and, separately, this environment's
+# copy of that package was missing migrations/__init__.py entirely (a
+# packaging defect that made Django treat the whole app as unmigrated and
+# fall back to unordered syncdb — fatal against Postgres's strict FK
+# validation, though invisible under SQLite). Redirecting to a
+# project-owned, version-controlled copy of the same migration history
+# (config/vendor_apps/token_blacklist/migrations/) fixes both: migrations
+# are always discoverable regardless of the installed wheel's contents,
+# and the Meta drift gets a normal migration instead of failing
+# `makemigrations --check` forever. The nested .../migrations/ path
+# (rather than pointing straight at token_blacklist/) is deliberate: it's
+# what lets this directory fall under the project's existing "**/migrations"
+# ruff/mypy/coverage exclude patterns without adding new ones.
+MIGRATION_MODULES = {
+    "token_blacklist": "config.vendor_apps.token_blacklist.migrations",
+}
+
 # Custom user model, defined before any migration has ever been applied to
 # a real database in this project (see docs/adr/0002-custom-user-model.md)
 # — the safe time to introduce one is before the first `migrate`, not after.

@@ -60,6 +60,10 @@ dependencies = [
   # system poppler-utils binary (see Dockerfile).
   "pdf2image==1.17.0",
   "Pillow==12.3.0",
+  # pgvector column type + queryset helpers (VectorField, L2/cosine
+  # distance lookups) for Phase 6's semantic-search chunk index —
+  # required tech direction ("PostgreSQL with pgvector").
+  "pgvector==0.5.0",
 ]
 
 [tool.setuptools.packages.find]

@@ -2,6 +2,7 @@ import factory
 from factory.django import DjangoModelFactory
 
 from apps.accounts.models import User
+from apps.assistant.models import Conversation, DocumentChunk
 from apps.documents.models import Document
 from apps.extraction.models import DocumentExtraction, ExtractedField, ExtractionStatus
 from apps.processing.models import ProcessingJob, ProcessingStage
@@ -92,3 +93,23 @@ class ExtractedFieldFactory(DjangoModelFactory):
     normalized_value = "100.00"
     confidence = 0.9
     is_required = True
+
+
+class ConversationFactory(DjangoModelFactory):
+    class Meta:
+        model = Conversation
+
+    workspace = factory.SubFactory(WorkspaceFactory)
+    created_by = factory.SubFactory(UserFactory)
+
+
+class DocumentChunkFactory(DjangoModelFactory):
+    class Meta:
+        model = DocumentChunk
+
+    document = factory.SubFactory(DocumentFactory)
+    workspace = factory.LazyAttribute(lambda o: o.document.workspace)
+    chunk_index = factory.Sequence(lambda n: n)
+    page_number = 1
+    text = "Sample indexed text."
+    embedding = factory.LazyFunction(lambda: [0.0] * 256)

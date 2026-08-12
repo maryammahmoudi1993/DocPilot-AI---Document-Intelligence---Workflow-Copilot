@@ -86,28 +86,28 @@ class TestSuccessfulPaths:
         assert job.total_pages == 3
         assert ocr.page_calls == [2]
 
-    def test_placeholder_stages_are_recorded_without_fabricated_data(
+    def test_every_stage_completes_as_real_work_not_a_placeholder(
         self, fake_storage, fake_providers
     ):
+        """As of Phase 6, no stage in STAGE_ORDER is a deferred
+        placeholder any more — extracting_fields/validating_extraction/
+        scoring_confidence (Phase 5) and indexing (Phase 6) all record
+        real completions, never a fabricated or skipped result."""
         job = _job_with_file(fake_storage)
 
         run_processing_pipeline.delay(str(job.id))
         job.refresh_from_db()
 
-        recorded_stages = {entry["stage"] for entry in job.stage_history}
-        for deferred_stage in (
+        by_stage = {
+            entry["stage"]: entry for entry in job.stage_history if entry["status"] != "started"
+        }
+        for stage in (
             ProcessingStage.EXTRACTING_FIELDS,
             ProcessingStage.VALIDATING_EXTRACTION,
             ProcessingStage.SCORING_CONFIDENCE,
             ProcessingStage.INDEXING,
         ):
-            assert deferred_stage in recorded_stages
-        deferred_entries = [
-            e
-            for e in job.stage_history
-            if e["stage"] in recorded_stages and e["status"] == "skipped"
-        ]
-        assert any("Phase 5" in e["detail"] or "Phase 6" in e["detail"] for e in deferred_entries)
+            assert by_stage[stage]["status"] == "completed"
 
 
 @pytest.mark.django_db
