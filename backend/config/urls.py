@@ -19,6 +19,10 @@ urlpatterns = [
         "api/workspaces/<uuid:workspace_id>/assistant/conversations/",
         include("apps.assistant.urls"),
     ),
+    path(
+        "api/workspaces/<uuid:workspace_id>/workflows/",
+        include("apps.workflows.urls"),
+    ),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/schema/docs/",

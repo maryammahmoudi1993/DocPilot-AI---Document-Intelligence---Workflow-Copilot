@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.processing",
     "apps.extraction",
     "apps.assistant",
+    "apps.workflows",
 ]
 
 # The installed rest_framework_simplejwt.token_blacklist wheel's model
@@ -206,6 +207,12 @@ RAG_MAX_GROUNDING_DISTANCE = env.float("RAG_MAX_GROUNDING_DISTANCE", default=0.9
 # provider for one answer — the documented token budget (see
 # apps/assistant/services.build_context).
 RAG_CONTEXT_BUDGET_CHARS = env.int("RAG_CONTEXT_BUDGET_CHARS", default=6000)
+
+# --- Workflow engine (Phase 7) -------------------------------------------
+# "mock" (deterministic, no network — the default and the only option
+# exercised in tests) or "http" (stdlib urllib, a real deployment
+# option — see apps/workflows/providers.py).
+WORKFLOW_ACTION_PROVIDER = env.str("WORKFLOW_ACTION_PROVIDER", default="mock")
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
