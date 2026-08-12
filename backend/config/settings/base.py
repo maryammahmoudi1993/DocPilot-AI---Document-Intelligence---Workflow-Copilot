@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.documents",
     "apps.processing",
     "apps.extraction",
+    "apps.assistant",
 ]
 
 # The installed rest_framework_simplejwt.token_blacklist wheel's model
@@ -179,6 +180,32 @@ DOCUMENT_STORAGE_USE_PATH_STYLE = env.bool("DOCUMENT_STORAGE_USE_PATH_STYLE", de
 
 DOCUMENT_MAX_UPLOAD_SIZE_BYTES = env.int("DOCUMENT_MAX_UPLOAD_SIZE_BYTES", default=20 * 1024 * 1024)
 DOCUMENT_SIGNED_URL_EXPIRY_SECONDS = env.int("DOCUMENT_SIGNED_URL_EXPIRY_SECONDS", default=300)
+
+# --- RAG knowledge assistant (Phase 6) ---------------------------------
+# "mock" (deterministic, no network — the only option wired in this
+# phase) or "openai"/"anthropic"-style real providers a future phase
+# could add behind the same interface (see apps/assistant/providers.py).
+# No real embedding/LLM API key is configured in this project yet — see
+# docs/adr for the rationale; mock providers are also what keeps this
+# app's tests free of paid-provider calls.
+RAG_EMBEDDING_PROVIDER = env.str("RAG_EMBEDDING_PROVIDER", default="mock")
+RAG_GENERATION_PROVIDER = env.str("RAG_GENERATION_PROVIDER", default="mock")
+# Dimensionality of the mock embedding vectors — arbitrary but fixed
+# (changing it requires a migration, since pgvector columns are
+# fixed-width). Small on purpose: this is a demo-scale corpus, not a
+# production embedding index.
+RAG_EMBEDDING_DIMENSIONS = env.int("RAG_EMBEDDING_DIMENSIONS", default=256)
+# Chunk size (chars) and retrieval fan-out.
+RAG_CHUNK_SIZE_CHARS = env.int("RAG_CHUNK_SIZE_CHARS", default=800)
+RAG_RETRIEVAL_TOP_K = env.int("RAG_RETRIEVAL_TOP_K", default=5)
+# Cosine distance (0 = identical, 2 = opposite) above which a retrieved
+# chunk is considered too dissimilar to ground an answer — see
+# apps/assistant/services.answer_question's insufficient-evidence path.
+RAG_MAX_GROUNDING_DISTANCE = env.float("RAG_MAX_GROUNDING_DISTANCE", default=0.9)
+# Total characters of retrieved chunk text handed to the generation
+# provider for one answer — the documented token budget (see
+# apps/assistant/services.build_context).
+RAG_CONTEXT_BUDGET_CHARS = env.int("RAG_CONTEXT_BUDGET_CHARS", default=6000)
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
