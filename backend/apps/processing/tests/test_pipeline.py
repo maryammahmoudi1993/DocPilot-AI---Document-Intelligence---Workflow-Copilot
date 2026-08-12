@@ -172,3 +172,66 @@ class TestStageExtractFields:
         pipeline.stage_extract_fields(job, "Invoice Number: INV-1\nTotal: 10.00\n")
 
         assert DocumentExtraction.objects.filter(document=job.document).exists()
+
+
+class TestBuildPageTexts:
+    def test_returns_digital_text_per_page_for_a_fully_digital_pdf(self):
+        job = _job()
+
+        pages = pipeline.build_page_texts(job, digital_pdf_bytes(), [], FakeOCRProvider())
+
+        assert [p for p, _ in pages] == list(range(1, len(pages) + 1))
+        assert all(text for _, text in pages)
+
+    def test_ocrs_only_the_flagged_pages(self):
+        job = _job()
+        provider = FakeOCRProvider(text="scanned-text")
+
+        pages = pipeline.build_page_texts(job, mixed_pdf_bytes(), [2], provider)
+
+        assert provider.page_calls == [2]
+        page_2_text = next(text for p, text in pages if p == 2)
+        assert "scanned-text" in page_2_text
+
+    def test_an_image_document_uses_the_image_ocr_path(self):
+        job = _job(content_type="image/png", filename="scan.png")
+        provider = FakeOCRProvider(text="image-text")
+
+        pages = pipeline.build_page_texts(job, b"fake-image-bytes", [1], provider)
+
+        assert pages == [(1, "image-text")]
+
+    def test_pages_with_no_text_at_all_are_omitted(self):
+        job = _job(content_type="text/plain", filename="empty.txt")
+
+        pages = pipeline.build_page_texts(job, b"", [], FakeOCRProvider())
+
+        assert pages == []
+
+
+@pytest.mark.django_db
+class TestStageIndex:
+    def test_creates_chunks_for_the_document(self):
+        from apps.assistant.models import DocumentChunk
+        from tests.factories import ProcessingJobFactory
+
+        job = ProcessingJobFactory()
+
+        chunk_count = pipeline.stage_index(job, [(1, "Some indexable text about a contract.")])
+
+        assert chunk_count == 1
+        assert DocumentChunk.objects.filter(document=job.document).count() == 1
+
+    def test_an_indexing_failure_does_not_raise(self, monkeypatch):
+        from tests.factories import ProcessingJobFactory
+
+        job = ProcessingJobFactory()
+
+        def _boom(*args, **kwargs):
+            raise RuntimeError("embedding provider exploded")
+
+        monkeypatch.setattr("apps.assistant.services.index_document", _boom)
+
+        chunk_count = pipeline.stage_index(job, [(1, "text")])  # must not raise
+
+        assert chunk_count == 0
