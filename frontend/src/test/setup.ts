@@ -52,3 +52,14 @@ if (typeof window.matchMedia !== 'function') {
       dispatchEvent: () => false,
     }) as MediaQueryList;
 }
+
+// jsdom has no ResizeObserver (it's a real-layout-engine API) — the
+// Workflow Builder's canvas (@xyflow/react) measures its container with
+// one unconditionally and throws without this stub.
+if (typeof window.ResizeObserver !== 'function') {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
