@@ -379,30 +379,80 @@ def trigger_workflows(
     return runs
 
 
-NodeHandler = Any  # callable(config: dict, context: dict, provider: ActionProvider) -> dict
+NodeHandler = Any  # callable(config: dict, run: WorkflowRun, provider: ActionProvider) -> dict
 
 
-def _handle_request_approval(config: dict, context: dict, provider: ActionProvider) -> dict:
-    return {"approval_requested": True, "role": config.get("approver_role", "admin")}
+def _handle_request_approval(config: dict, run: "WorkflowRun", provider: ActionProvider) -> dict:
+    from apps.approvals.services import create_approval_request
 
-
-def _handle_send_notification(config: dict, context: dict, provider: ActionProvider) -> dict:
-    return provider.send_notification(
-        message=config.get("message", ""), recipient=config.get("recipient", "workspace")
+    approval = create_approval_request(
+        workspace=run.workspace,
+        title=f"Approval requested — {run.workflow.name}",
+        description=f"Triggered by workflow run {run.id}.",
+        risk_level=config.get("risk_level", "medium"),
+        assigned_role=config.get("approver_role", "admin"),
+        document_id=run.trigger_context.get("document_id") or None,
+        workflow_run=run,
     )
+    return {
+        "approval_requested": True,
+        "approval_id": str(approval.id),
+        "role": approval.assigned_role,
+    }
 
 
-def _handle_trigger_webhook(config: dict, context: dict, provider: ActionProvider) -> dict:
-    return provider.trigger_webhook(
-        url=config["url"], payload={"event": context.get("event"), **context}
+def _handle_send_notification(config: dict, run: "WorkflowRun", provider: ActionProvider) -> dict:
+    """First confirms the notification channel is reachable via the
+    (retryable, provider-abstracted) synchronous check apps.workflows
+    already tests against — a provider failure here is what drives this
+    node's retry-on-failure behavior. Once that succeeds, persists a
+    real in-app Notification (apps.notifications) so it actually shows
+    up for the assigned role, not just a mock acknowledgement."""
+    from apps.notifications.services import notify_role
+
+    result = provider.send_notification(
+        message=config.get("message", ""), recipient=config.get("recipient_role", "admin")
     )
+    notifications = notify_role(
+        workspace=run.workspace,
+        role=config.get("recipient_role", "admin"),
+        title="Workflow notification",
+        body=config.get("message", ""),
+        event_type="workflow.notification",
+        metadata={"workflow_run_id": str(run.id)},
+    )
+    return {**result, "recipient_count": len(notifications)}
 
 
-def _handle_add_tag(config: dict, context: dict, provider: ActionProvider) -> dict:
+def _handle_trigger_webhook(config: dict, run: "WorkflowRun", provider: ActionProvider) -> dict:
+    """Same two-step shape as _handle_send_notification: the provider
+    call drives retry-on-failure; the real, tracked WebhookDelivery
+    (apps.notifications, its own signed/idempotent/retried Celery
+    delivery) is what actually reaches `config["url"]` once this step
+    itself is considered successful."""
+    from apps.notifications.services import deliver_to_url
+
+    result = provider.trigger_webhook(
+        url=config["url"],
+        payload={"event": run.trigger_context.get("event"), **run.trigger_context},
+    )
+    delivery = deliver_to_url(
+        workspace=run.workspace,
+        url=config["url"],
+        event_type="workflow.webhook",
+        payload={"event": run.trigger_context.get("event"), **run.trigger_context},
+        dedupe_key=str(run.id),
+    )
+    return {**result, "scheduled": delivery is not None}
+
+
+def _handle_add_tag(config: dict, run: "WorkflowRun", provider: ActionProvider) -> dict:
     return {"tag_added": config["tag"]}
 
 
-def _handle_export_structured_data(config: dict, context: dict, provider: ActionProvider) -> dict:
+def _handle_export_structured_data(
+    config: dict, run: "WorkflowRun", provider: ActionProvider
+) -> dict:
     return {"exported": True, "format": config.get("format", "json")}
 
 
@@ -497,7 +547,7 @@ def execute_workflow(*, run: WorkflowRun, provider: ActionProvider) -> WorkflowR
             while attempts < max_attempts and not succeeded:
                 attempts += 1
                 try:
-                    output = handler(node.config, run.trigger_context, provider)
+                    output = handler(node.config, run, provider)
                     succeeded = True
                 except ActionProviderError:
                     error_code = "provider_unavailable"

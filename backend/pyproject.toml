@@ -64,6 +64,11 @@ dependencies = [
   # distance lookups) for Phase 6's semantic-search chunk index —
   # required tech direction ("PostgreSQL with pgvector").
   "pgvector==0.5.0",
+  # Fernet symmetric encryption for webhook secrets at rest (Phase 8) —
+  # already a transitive dependency (djangorestframework-simplejwt),
+  # pinned and imported directly now that apps.notifications.crypto
+  # depends on it explicitly.
+  "cryptography==50.0.0",
 ]
 
 [tool.setuptools.packages.find]

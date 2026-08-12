@@ -3,6 +3,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.extraction.views import ExtractionQueueView
+from apps.notifications.urls import integration_urlpatterns, notification_urlpatterns
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -22,6 +23,22 @@ urlpatterns = [
     path(
         "api/workspaces/<uuid:workspace_id>/workflows/",
         include("apps.workflows.urls"),
+    ),
+    path(
+        "api/workspaces/<uuid:workspace_id>/approvals/",
+        include("apps.approvals.urls"),
+    ),
+    path(
+        "api/workspaces/<uuid:workspace_id>/notifications/",
+        include((notification_urlpatterns, "notifications")),
+    ),
+    path(
+        "api/workspaces/<uuid:workspace_id>/integrations/webhooks/",
+        include((integration_urlpatterns, "integrations")),
+    ),
+    path(
+        "api/workspaces/<uuid:workspace_id>/audit-events/",
+        include("apps.audit.urls"),
     ),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
