@@ -20,6 +20,7 @@ def _reimport_production_settings():
 def test_production_requires_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DJANGO_SECRET_KEY", raising=False)
     monkeypatch.setenv("DJANGO_ALLOWED_HOSTS", "example.com")
+    monkeypatch.setenv("INTEGRATION_SECRET_KEY", "xjnqLuaWBy-MYTPeJUKpEGiIB1W1VbeMBsyYaPfswhc=")
 
     with pytest.raises(ImproperlyConfigured, match="DJANGO_SECRET_KEY"):
         _reimport_production_settings()
@@ -28,14 +29,25 @@ def test_production_requires_secret_key(monkeypatch: pytest.MonkeyPatch) -> None
 def test_production_requires_allowed_hosts(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DJANGO_SECRET_KEY", "a-real-secret-key")
     monkeypatch.delenv("DJANGO_ALLOWED_HOSTS", raising=False)
+    monkeypatch.setenv("INTEGRATION_SECRET_KEY", "xjnqLuaWBy-MYTPeJUKpEGiIB1W1VbeMBsyYaPfswhc=")
 
     with pytest.raises(ImproperlyConfigured, match="DJANGO_ALLOWED_HOSTS"):
+        _reimport_production_settings()
+
+
+def test_production_requires_integration_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DJANGO_SECRET_KEY", "a-real-secret-key")
+    monkeypatch.setenv("DJANGO_ALLOWED_HOSTS", "example.com")
+    monkeypatch.delenv("INTEGRATION_SECRET_KEY", raising=False)
+
+    with pytest.raises(ImproperlyConfigured, match="INTEGRATION_SECRET_KEY"):
         _reimport_production_settings()
 
 
 def test_production_boots_when_required_vars_are_set(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DJANGO_SECRET_KEY", "a-real-secret-key")
     monkeypatch.setenv("DJANGO_ALLOWED_HOSTS", "example.com")
+    monkeypatch.setenv("INTEGRATION_SECRET_KEY", "xjnqLuaWBy-MYTPeJUKpEGiIB1W1VbeMBsyYaPfswhc=")
 
     settings_module = _reimport_production_settings()
 
