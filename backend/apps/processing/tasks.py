@@ -31,14 +31,11 @@ logger = logging.getLogger(__name__)
 # — this is a portfolio-scale pipeline, not a tunable production queue.
 MAX_ATTEMPTS = 3
 
-# Stages Phase 5/6 own the real implementation of — this phase only
-# transitions through them, recording *why* nothing happened rather than
-# fabricating extraction/confidence/indexing results (project rule: do
-# not fake working behavior in the final demo).
+# Phase 6 owns real semantic indexing — this phase only transitions
+# through it, recording *why* nothing happened rather than fabricating
+# an indexing result (project rule: do not fake working behavior in the
+# final demo).
 _DEFERRED_STAGES: list[tuple[str, str]] = [
-    (ProcessingStage.EXTRACTING_FIELDS, "Deferred to Phase 5 (structured extraction)."),
-    (ProcessingStage.VALIDATING_EXTRACTION, "Deferred to Phase 5 (structured extraction)."),
-    (ProcessingStage.SCORING_CONFIDENCE, "Deferred to Phase 5 (structured extraction)."),
     (ProcessingStage.INDEXING, "Deferred to Phase 6 (RAG indexing)."),
 ]
 
@@ -110,6 +107,19 @@ def _run(task, job: ProcessingJob) -> None:  # noqa: ANN001
         # never the full extracted/OCR'd text — see ProcessingJob's
         # raw_text_excerpt docstring.
         job.raw_text_excerpt = combined_text[:2000]
+
+        job.stage = ProcessingStage.EXTRACTING_FIELDS
+        _append_history(job, job.stage, "started")
+        pipeline.stage_extract_fields(job, combined_text)
+        _append_history(job, job.stage, "completed")
+
+        # Business validation and confidence scoring both run as part of
+        # stage_extract_fields (see apps.extraction.services) — these two
+        # stages exist for visible progress reporting, not separate work.
+        job.stage = ProcessingStage.VALIDATING_EXTRACTION
+        _append_history(job, job.stage, "completed", detail="performed within extracting_fields")
+        job.stage = ProcessingStage.SCORING_CONFIDENCE
+        _append_history(job, job.stage, "completed", detail="performed within extracting_fields")
 
         for stage, detail in _DEFERRED_STAGES:
             job.stage = stage

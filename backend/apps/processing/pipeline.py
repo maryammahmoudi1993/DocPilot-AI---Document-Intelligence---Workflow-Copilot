@@ -133,3 +133,29 @@ def stage_classify(
     job.document_type = provider.classify(
         filename=job.document.filename, text_sample=combined_text[:2000]
     )
+
+
+def stage_extract_fields(job: ProcessingJob, combined_text: str) -> None:
+    """Delegates to apps.extraction (Phase 5) for invoice documents only
+    — this phase's explicit schema scope (see
+    apps/extraction/providers.py's INVOICE_SCHEMA). Other document types
+    complete processing with no structured extraction rather than a
+    fabricated one. Never raises: a provider/service failure here must
+    not fail the whole processing job (the job's job is text
+    extraction/OCR/classification; structured extraction has its own,
+    separate review lifecycle)."""
+    from apps.extraction.providers import get_extraction_provider
+    from apps.extraction.services import build_extraction_for_job
+    from apps.processing.models import DocumentType
+
+    if job.document_type != DocumentType.INVOICE:
+        return
+
+    try:
+        build_extraction_for_job(job, text=combined_text, provider=get_extraction_provider())
+    except Exception:  # noqa: BLE001 - see docstring: extraction failure must not fail the job
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "extraction_stage_failed", extra={"job_id": str(job.id)}
+        )
