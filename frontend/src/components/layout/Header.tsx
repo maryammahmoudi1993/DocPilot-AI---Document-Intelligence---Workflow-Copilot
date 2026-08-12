@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { IconButton } from '@/components/ui/IconButton';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { WorkspaceSelector } from './WorkspaceSelector';
+import { NotificationsMenu } from './NotificationsMenu';
 import { useLogout, useSession } from '@/features/auth/hooks';
 
 export interface HeaderProps {
@@ -32,6 +33,7 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
 
       <div className="ml-auto flex items-center gap-3">
         <WorkspaceSelector />
+        <NotificationsMenu />
 
         {session?.user && (
           <span className="hidden text-sm text-text-secondary sm:inline" title={session.user.email}>
