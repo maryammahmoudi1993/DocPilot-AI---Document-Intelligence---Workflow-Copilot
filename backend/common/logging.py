@@ -1,15 +1,20 @@
 """Structured logging support.
 
 Emits one JSON object per log line (machine-parseable, correlation-ID
-tagged) instead of Django's default free-text formatting. Never log
-secrets, tokens, passwords, full document contents, or extracted field
-values — callers are responsible for keeping log messages/extra fields free
-of that data; this formatter does not attempt to redact after the fact.
+tagged) instead of Django's default free-text formatting. Callers are
+still primarily responsible for keeping log messages/extra fields free
+of secrets, tokens, passwords, full document contents, or extracted
+field values — this formatter's redaction (see `_SENSITIVE_KEY_PATTERN`
+below) is a defense-in-depth safety net for a caller mistake (e.g.
+`extra={"password": raw_password}`), not a substitute for that
+discipline: it only catches well-known key *names*, not secrets hiding
+inside an unrelated field's value.
 """
 
 import contextvars
 import json
 import logging
+import re
 from datetime import UTC, datetime
 
 correlation_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
@@ -17,6 +22,11 @@ correlation_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 _RESERVED_LOG_RECORD_ATTRS = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__dict__)
+
+_SENSITIVE_KEY_PATTERN = re.compile(
+    r"(password|token|secret|api[_-]?key|authorization|credential)", re.IGNORECASE
+)
+_REDACTED = "[REDACTED]"
 
 
 class CorrelationIdFilter(logging.Filter):
@@ -42,7 +52,7 @@ class StructuredFormatter(logging.Formatter):
             payload["exc_info"] = self.formatException(record.exc_info)
 
         extra = {
-            key: value
+            key: (_REDACTED if _SENSITIVE_KEY_PATTERN.search(key) else value)
             for key, value in record.__dict__.items()
             if key not in _RESERVED_LOG_RECORD_ATTRS and key != "correlation_id"
         }
