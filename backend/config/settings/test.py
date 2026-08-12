@@ -1,13 +1,15 @@
 """Test settings.
 
-Documented deviation from the production/local target (PostgreSQL): this
-phase has no models yet, so nothing depends on Postgres- or pgvector-
-specific behavior. Using SQLite in-memory keeps the unit test suite fast
-and dependency-free (no database server required to run `pytest`). Once a
-model that needs a Postgres-only feature (e.g. a pgvector column) is
-introduced, that app's tests must switch to a real Postgres test database
-(e.g. via a docker-compose/CI service) — do not assume SQLite compatibility
-project-wide.
+Runs against a real PostgreSQL (+pgvector) database, not SQLite. Through
+Phase 5, this suite used SQLite in-memory for speed and zero setup, since
+nothing depended on Postgres-specific behavior. Phase 6 introduces
+`DocumentChunk.embedding` (a pgvector column via `pgvector.django.VectorField`)
+— a feature SQLite cannot represent at all — so `DATABASES` now inherits
+base.py's `DATABASE_URL`-driven Postgres config unconditionally, same as
+local/production. Requires a reachable Postgres with the `vector` extension
+available (docker-compose's `postgres` service, or the `pgvector/pgvector`
+image the CI workflow already runs) — there is no dependency-free fallback
+for this app going forward.
 """
 
 from .base import *  # noqa: F403
@@ -17,13 +19,6 @@ DEBUG = False
 SECRET_KEY = "django-insecure-test-only-key-at-least-32-bytes-long"  # noqa: S105
 
 ALLOWED_HOSTS = ["testserver"]
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
-    },
-}
 
 # Fast password hashing in tests — never used outside the test settings.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

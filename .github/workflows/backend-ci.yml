@@ -18,10 +18,9 @@ defaults:
 env:
   DJANGO_SECRET_KEY: ci-only-secret-key
   DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
-  # manage.py check / makemigrations --check / spectacular run against a
-  # real PostgreSQL service container (matching the production/local
-  # target) — unlike `pytest`, which uses the documented SQLite test
-  # settings (see backend/config/settings/test.py).
+  # Every step — including pytest, since Phase 6's pgvector column has
+  # no SQLite equivalent (see backend/config/settings/test.py) — runs
+  # against this real PostgreSQL (+pgvector) service container.
   DATABASE_URL: postgres://docpilot:docpilot@localhost:5432/docpilot
   REDIS_URL: redis://localhost:6379/0
 
