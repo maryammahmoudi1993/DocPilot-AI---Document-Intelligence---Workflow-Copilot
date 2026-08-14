@@ -7,6 +7,7 @@ import { config } from '@/config';
 import { server } from '@/mocks/server';
 import { SignInPage } from '@/pages/SignIn';
 import { renderWithProviders } from '@/test/testUtils';
+import { DEMO_ACCOUNTS } from '@/features/auth/demoAccounts';
 
 const API = config.apiBaseUrl;
 
@@ -136,5 +137,47 @@ describe('SignInPage — submission', () => {
 
     await screen.findByText('Dashboard content');
     expect(container.innerHTML).not.toContain('fake-access-token');
+  });
+});
+
+describe('SignInPage — demo quick login', () => {
+  it('offers one quick-login button per demo workspace role', () => {
+    renderSignIn();
+
+    for (const account of DEMO_ACCOUNTS) {
+      expect(screen.getByRole('button', { name: new RegExp(account.label, 'i') })).toBeInTheDocument();
+    }
+  });
+
+  it('signs in as the selected role without the user typing any credentials', async () => {
+    const user = userEvent.setup();
+    renderSignIn();
+
+    expect(screen.queryByLabelText('Email')).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: /viewer/i }));
+
+    expect(await screen.findByText('Dashboard content')).toBeInTheDocument();
+  });
+
+  it('shows a loading state only on the clicked button while its request is in flight', async () => {
+    server.use(
+      http.post(`${API}/auth/login/`, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return HttpResponse.json({
+          access: 'token',
+          user: { id: 'reviewer', email: 'reviewer@demo.docpilot.ai', first_name: 'Demo', last_name: 'Reviewer' },
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderSignIn();
+
+    const reviewerButton = screen.getByRole('button', { name: /reviewer/i });
+    const ownerButton = screen.getByRole('button', { name: /owner/i });
+    await user.click(reviewerButton);
+
+    expect(reviewerButton).toBeDisabled();
+    expect(ownerButton).toBeDisabled(); // any in-flight login disables every quick-login button
+    expect(await screen.findByText('Dashboard content')).toBeInTheDocument();
   });
 });
