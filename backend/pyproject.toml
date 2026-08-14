@@ -69,6 +69,10 @@ dependencies = [
   # pinned and imported directly now that apps.notifications.crypto
   # depends on it explicitly.
   "cryptography==50.0.0",
+  # Production WSGI server (Phase 11) — `manage.py runserver` (used
+  # everywhere else in this project — local dev, CI, docker-compose.yml)
+  # is explicitly documented by Django as unfit for production.
+  "gunicorn==26.0.0",
 ]
 
 [tool.setuptools.packages.find]

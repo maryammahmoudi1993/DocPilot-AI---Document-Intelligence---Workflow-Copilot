@@ -1,0 +1,36 @@
+# Production image — see Dockerfile for the local-development image this
+# is a sibling to, and docs/DEPLOYMENT.md for how this is actually run
+# (migration step, worker vs. web process, required environment).
+#
+# Same base and system packages as the dev image (libpq5 for psycopg,
+# tesseract-ocr + poppler-utils for the real OCR provider) but: no dev
+# extras installed, runs as a non-root user, and serves via gunicorn
+# instead of `manage.py runserver` (which Django's own docs say is not
+# fit for production).
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=config.settings.production
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq5 tesseract-ocr poppler-utils \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/false docpilot
+
+COPY . .
+RUN pip install --no-cache-dir . \
+    && chown -R docpilot:docpilot /app
+
+USER docpilot
+
+EXPOSE 8000
+
+# No migrate/collectstatic here — see docs/DEPLOYMENT.md's "release
+# step" section for why that runs as a separate, explicit deployment
+# step rather than baked into the container's own startup (a container
+# that silently migrates on every restart is a correctness/availability
+# risk during a multi-instance rolling deploy).
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
