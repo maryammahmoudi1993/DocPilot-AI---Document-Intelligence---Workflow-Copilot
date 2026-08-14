@@ -93,6 +93,13 @@ services:
       # see apps/processing/providers.py. Shared by both this service and
       # celery-worker below via the &backend_env anchor.
       DOCUMENT_OCR_PROVIDER: ${DOCUMENT_OCR_PROVIDER:-tesseract}
+      # "keyword"/"regex" (default, no cost) or "gemini" (real Google
+      # Gemini call — requires GEMINI_API_KEY). See
+      # apps/processing/providers.py and apps/extraction/providers.py.
+      DOCUMENT_CLASSIFICATION_PROVIDER: ${DOCUMENT_CLASSIFICATION_PROVIDER:-keyword}
+      DOCUMENT_EXTRACTION_PROVIDER: ${DOCUMENT_EXTRACTION_PROVIDER:-regex}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-flash-latest}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
