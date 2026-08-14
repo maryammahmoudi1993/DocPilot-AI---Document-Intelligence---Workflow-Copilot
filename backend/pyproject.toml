@@ -73,6 +73,14 @@ dependencies = [
   # everywhere else in this project — local dev, CI, docker-compose.yml)
   # is explicitly documented by Django as unfit for production.
   "gunicorn==26.0.0",
+  # Real classification/extraction provider (apps/processing/providers.py,
+  # apps/extraction/providers.py via common/gemini.py) — only called
+  # when DOCUMENT_CLASSIFICATION_PROVIDER or DOCUMENT_EXTRACTION_PROVIDER
+  # is "gemini" (requires GEMINI_API_KEY); the deterministic defaults
+  # need neither this package nor a network call, same "installed
+  # unconditionally, does nothing unless imported" posture as the OCR
+  # dependencies above.
+  "google-genai==2.18.1",
 ]
 
 [tool.setuptools.packages.find]
