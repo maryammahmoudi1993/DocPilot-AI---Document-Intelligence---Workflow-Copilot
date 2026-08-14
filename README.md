@@ -66,15 +66,21 @@ At that point: backend on `http://localhost:8000` (`/api/health/`,
 `/api/readiness/`, `/api/schema/docs/`), frontend dev server via
 `cd frontend && npm run dev` (`http://localhost:3000`).
 
-Seed a deterministic demo workspace (idempotent, safe to re-run):
+Seed a deterministic demo workspace with sample documents (idempotent,
+safe to re-run):
 
 ```bash
-cd backend && python manage.py seed_demo_data
+cd backend && python manage.py seed_demo_data && python manage.py seed_demo_documents
 ```
 
-Prints the demo password for the seeded users (`owner@demo.docpilot.ai`,
-`admin@…`, `finance@…`, `reviewer@…`, `viewer@…`) to stdout — a
-portfolio-demo credential documented on purpose, not a real secret.
+`seed_demo_data` prints the demo password for the seeded users
+(`owner@demo.docpilot.ai`, `admin@…`, `finance@…`, `reviewer@…`,
+`viewer@…`) to stdout — a portfolio-demo credential documented on
+purpose, not a real secret. `seed_demo_documents` uploads two entirely
+synthetic sample documents (see
+[`backend/apps/documents/fixtures/README.md`](backend/apps/documents/fixtures/README.md))
+into the demo workspace so the primary demo flow has something to run
+against.
 
 See [`backend/README.md`](backend/README.md) and
 [`frontend/README.md`](frontend/README.md) for the full command
@@ -107,6 +113,7 @@ python manage.py makemigrations --check --dry-run
 python manage.py migrate
 python manage.py runserver
 python manage.py seed_demo_data      # deterministic demo workspace, idempotent
+python manage.py seed_demo_documents # + the synthetic sample invoice/contract, idempotent
 python manage.py reset_demo_data     # clear + rebuild the demo workspace's data, idempotent
 ruff check .
 ruff format --check .
