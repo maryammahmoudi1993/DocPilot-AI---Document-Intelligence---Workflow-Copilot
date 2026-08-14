@@ -185,6 +185,12 @@ DOCUMENT_STORAGE_USE_PATH_STYLE = env.bool("DOCUMENT_STORAGE_USE_PATH_STYLE", de
 DOCUMENT_MAX_UPLOAD_SIZE_BYTES = env.int("DOCUMENT_MAX_UPLOAD_SIZE_BYTES", default=20 * 1024 * 1024)
 DOCUMENT_SIGNED_URL_EXPIRY_SECONDS = env.int("DOCUMENT_SIGNED_URL_EXPIRY_SECONDS", default=300)
 
+# "eicar" (default — offline signature check for the industry-standard
+# EICAR antivirus test file; no paid service, safe in tests) or "null"
+# (scanning explicitly disabled). See apps/documents/scanning.py for
+# the extension point a real AV engine would be wired in behind.
+DOCUMENT_MALWARE_SCAN_PROVIDER = env.str("DOCUMENT_MALWARE_SCAN_PROVIDER", default="eicar")
+
 # --- RAG knowledge assistant (Phase 6) ---------------------------------
 # "mock" (deterministic, no network — the only option wired in this
 # phase) or "openai"/"anthropic"-style real providers a future phase

@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from apps.audit.services import record_event
 from apps.documents.models import Document, DocumentStatus
+from apps.documents.scanning import MalwareScanProvider, get_malware_scan_provider
 from apps.documents.storage import StorageBackend, get_storage_backend
 from apps.documents.validation import validate_upload
 from apps.processing.services import enqueue_processing
@@ -45,10 +46,31 @@ def create_document(
     uploaded_by,
     uploaded_file,
     storage: StorageBackend | None = None,
+    scanner: MalwareScanProvider | None = None,
 ) -> Document:
     storage = storage or get_storage_backend()
+    scanner = scanner or get_malware_scan_provider()
 
     validate_upload(uploaded_file)
+
+    scan_result = scanner.scan(fileobj=uploaded_file)
+    if not scan_result.is_clean:
+        # Never log file content — the threat name/provider are safe,
+        # bounded, non-sensitive strings (see scanning.py docstring).
+        record_event(
+            event_type="document.malware_scan_flagged",
+            actor=uploaded_by,
+            workspace=workspace,
+            metadata={
+                "filename": uploaded_file.name,
+                "threat_name": scan_result.threat_name,
+                "provider": scan_result.provider,
+            },
+        )
+        raise ValidationError(
+            {"file": "This file was flagged by malware scanning and cannot be uploaded."}
+        )
+
     checksum = compute_sha256(uploaded_file)
 
     # Duplicate policy (workspace-scoped): an archived document with the

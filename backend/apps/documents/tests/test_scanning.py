@@ -22,7 +22,9 @@ from apps.documents.scanning import (
 class TestEicarSignatureScanProvider:
     def test_reports_clean_for_ordinary_content(self):
         provider = EicarSignatureScanProvider()
-        file = SimpleUploadedFile("a.pdf", b"%PDF-1.4\nordinary content", content_type="application/pdf")
+        file = SimpleUploadedFile(
+            "a.pdf", b"%PDF-1.4\nordinary content", content_type="application/pdf"
+        )
 
         result = provider.scan(fileobj=file)
 
@@ -43,7 +45,9 @@ class TestEicarSignatureScanProvider:
     def test_flags_the_signature_even_when_not_at_the_start_of_the_file(self):
         provider = EicarSignatureScanProvider()
         file = SimpleUploadedFile(
-            "a.txt", b"leading bytes " + EICAR_SIGNATURE + b" trailing bytes", content_type="text/plain"
+            "a.txt",
+            b"leading bytes " + EICAR_SIGNATURE + b" trailing bytes",
+            content_type="text/plain",
         )
 
         result = provider.scan(fileobj=file)
@@ -104,6 +108,8 @@ class TestCreateDocumentRejectsFlaggedUploads:
         storage = FakeStorageBackend()
 
         with pytest.raises(ValidationError):
-            create_document(workspace=workspace, uploaded_by=user, uploaded_file=file, storage=storage)
+            create_document(
+                workspace=workspace, uploaded_by=user, uploaded_file=file, storage=storage
+            )
 
         assert storage.objects == {}
