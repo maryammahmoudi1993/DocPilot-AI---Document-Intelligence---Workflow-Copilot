@@ -131,14 +131,19 @@ caller isn't a member of, in `apps/workspaces/services.py`).
 ### Demo data
 
 ```bash
-python manage.py seed_demo_data
+python manage.py seed_demo_data       # workspace + 5 role users
+python manage.py seed_demo_documents  # + the synthetic sample invoice/contract
+python manage.py reset_demo_data      # clears + rebuilds the demo workspace's data
 ```
 
-Idempotent. Creates `Demo Workspace` and one user per role
-(`owner@demo.docpilot.ai`, `admin@…`, `finance@…`, `reviewer@…`,
-`viewer@…`), all with the same password the command prints to stdout —
-a portfolio-demo credential, not a real secret, safe to have in this
-README.
+All three are idempotent. `seed_demo_data` creates `Demo Workspace` and
+one user per role (`owner@demo.docpilot.ai`, `admin@…`, `finance@…`,
+`reviewer@…`, `viewer@…`), all with the same password the command
+prints to stdout — a portfolio-demo credential, not a real secret, safe
+to have in this README. `seed_demo_documents` (requires
+`seed_demo_data` to have run first) uploads the two entirely-synthetic
+sample documents in `apps/documents/fixtures/` through the real upload
+path — see that directory's own README for provenance.
 
 ## Documents and storage
 
