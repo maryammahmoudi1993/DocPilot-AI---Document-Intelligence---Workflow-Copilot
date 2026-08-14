@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.env
+# Windows-only local dev workaround (see .npmrc's own comment) — routes
+# npm scripts through a Windows Git-Bash path that doesn't exist inside
+# the Linux build container and breaks `npm run build` there if copied in.
+.npmrc
