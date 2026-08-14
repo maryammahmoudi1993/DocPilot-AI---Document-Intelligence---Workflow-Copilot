@@ -7,6 +7,7 @@ import { Sparkles, FileStack } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useLogin } from '@/features/auth/hooks';
+import { DEMO_ACCOUNTS, DEMO_ACCOUNT_PASSWORD } from '@/features/auth/demoAccounts';
 import { ApiError } from '@/lib/apiClient';
 
 const signInSchema = z.object({
@@ -31,6 +32,7 @@ export function SignInPage() {
   const location = useLocation();
   const login = useLogin();
   const [formError, setFormError] = useState<string | null>(null);
+  const [pendingDemoRole, setPendingDemoRole] = useState<string | null>(null);
 
   const {
     register,
@@ -38,23 +40,34 @@ export function SignInPage() {
     formState: { errors },
   } = useForm<SignInFormValues>({ resolver: zodResolver(signInSchema) });
 
+  const goToDestination = () => {
+    const from = (location.state as LocationState | null)?.from?.pathname ?? '/app/dashboard';
+    navigate(from, { replace: true });
+  };
+
+  const handleLoginError = (error: unknown) => {
+    if (error instanceof ApiError && error.code === 'throttled') {
+      setFormError('Too many attempts. Please wait a moment and try again.');
+    } else if (error instanceof ApiError && error.code === 'authentication_failed') {
+      setFormError('Invalid email or password.');
+    } else {
+      setFormError('Something went wrong. Please try again.');
+    }
+  };
+
   const onSubmit = (values: SignInFormValues) => {
     setFormError(null);
-    login.mutate(values, {
-      onSuccess: () => {
-        const from = (location.state as LocationState | null)?.from?.pathname ?? '/app/dashboard';
-        navigate(from, { replace: true });
-      },
-      onError: (error) => {
-        if (error instanceof ApiError && error.code === 'throttled') {
-          setFormError('Too many attempts. Please wait a moment and try again.');
-        } else if (error instanceof ApiError && error.code === 'authentication_failed') {
-          setFormError('Invalid email or password.');
-        } else {
-          setFormError('Something went wrong. Please try again.');
-        }
-      },
-    });
+    setPendingDemoRole(null);
+    login.mutate(values, { onSuccess: goToDestination, onError: handleLoginError });
+  };
+
+  const handleDemoLogin = (role: string, email: string) => {
+    setFormError(null);
+    setPendingDemoRole(role);
+    login.mutate(
+      { email, password: DEMO_ACCOUNT_PASSWORD },
+      { onSuccess: goToDestination, onError: handleLoginError },
+    );
   };
 
   return (
@@ -149,10 +162,43 @@ export function SignInPage() {
               </p>
             )}
 
-            <Button type="submit" className="w-full" isLoading={login.isPending}>
+            <Button
+              type="submit"
+              className="w-full"
+              isLoading={login.isPending && pendingDemoRole === null}
+              disabled={login.isPending}
+            >
               Sign In
             </Button>
           </form>
+
+          <div className="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-wide text-text-muted">
+            <div className="h-px flex-1 bg-border" aria-hidden="true" />
+            Or explore as a demo role
+            <div className="h-px flex-1 bg-border" aria-hidden="true" />
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {DEMO_ACCOUNTS.map((account) => (
+              <Button
+                key={account.role}
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="justify-start"
+                title={account.description}
+                isLoading={login.isPending && pendingDemoRole === account.role}
+                disabled={login.isPending}
+                onClick={() => handleDemoLogin(account.role, account.email)}
+              >
+                {account.label}
+              </Button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-text-secondary">
+            Portfolio demonstration — signs you straight into the seeded demo workspace at that
+            role's permission level, no password needed.
+          </p>
         </div>
       </div>
     </div>
