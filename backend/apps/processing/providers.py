@@ -165,6 +165,15 @@ class GeminiClassificationProvider:
                 code="classification_provider_unavailable",
             ) from exc
         except errors.ClientError as exc:
+            # Confirmed against the real API: Gemini reports rate
+            # limiting as HTTP 429, which the SDK's ClientError covers
+            # (its whole 4xx bucket, not just genuinely malformed
+            # requests) — retryable, unlike every other 4xx here.
+            if exc.code == 429:
+                raise RetryableProcessingError(
+                    "Classification provider rate limit reached.",
+                    code="classification_provider_rate_limited",
+                ) from exc
             raise ValidationProcessingError(
                 "Classification provider rejected the request.",
                 code="classification_provider_error",

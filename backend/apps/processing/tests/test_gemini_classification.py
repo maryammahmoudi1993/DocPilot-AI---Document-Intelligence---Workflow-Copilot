@@ -93,9 +93,7 @@ class TestGeminiClassificationProvider:
         client.models.generate_content.side_effect = errors.ClientError(
             429, {"error": {"message": "rate limited"}}
         )
-        monkeypatch.setattr(
-            "apps.processing.providers.build_gemini_client", lambda: client
-        )
+        monkeypatch.setattr("apps.processing.providers.build_gemini_client", lambda: client)
 
         with pytest.raises(RetryableProcessingError):
             GeminiClassificationProvider().classify(filename="x.pdf", text_sample="")
