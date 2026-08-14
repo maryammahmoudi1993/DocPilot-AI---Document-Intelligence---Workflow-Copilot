@@ -5,31 +5,52 @@ demonstration project.** Metrics, integrations, and workflows described
 anywhere in this repository are illustrative/sample unless stated
 otherwise.
 
-See [`docs/adr/0001-modular-monolith.md`](adr/0001-modular-monolith.md)
-for the architectural decision this document assumes.
+See [`docs/adr/`](adr/) for the individual architectural decisions this
+document assumes, most importantly
+[ADR-0001](adr/0001-modular-monolith.md) (modular monolith, not
+microservices).
+
+> **Note on currency:** this document was last brought fully up to date
+> at Phase 11 (production release). Earlier phases (Phase 3 onward)
+> added `apps.documents`, `apps.processing`, `apps.extraction`,
+> `apps.assistant`, `apps.workflows`, `apps.approvals`,
+> `apps.notifications`, `apps.audit`, and `apps.analytics` — all
+> reflected below. If a future change touches any of these modules
+> without updating this file, treat this file as stale for that module
+> and re-derive from the code (project rule: verify, don't assume).
 
 ## System shape
 
 A single Django/DRF **modular monolith** backend, a single React/TypeScript
-frontend, and asynchronous background processing via Celery/Redis (not
-yet implemented — lands in the async-processing phase). No microservices.
+frontend, and asynchronous background processing via Celery/Redis. No
+microservices.
 
 ```
-┌─────────────────────┐       ┌──────────────────────────────────┐
-│   frontend/ (Vite,   │  HTTP │   backend/ (Django + DRF)         │
-│   React, TypeScript) │──────▶│   config/  — settings, URL root   │
-└─────────────────────┘       │   apps/    — one Django app per   │
-                               │             bounded module        │
-                               │   common/  — cross-cutting infra  │
-                               │             (logging, middleware, │
-                               │             error envelope)       │
-                               └───────┬───────────────┬──────────┘
-                                       │                │
-                                 ┌─────▼─────┐   ┌───────▼──────┐
-                                 │ PostgreSQL │   │    Redis      │
-                                 │ (+pgvector)│   │ (cache, future │
-                                 │            │   │  Celery broker)│
-                                 └────────────┘   └───────────────┘
+┌─────────────────────┐       ┌────────────────────────────────────┐
+│   frontend/ (Vite,   │  HTTP │   backend/ (Django + DRF)           │
+│   React, TypeScript) │──────▶│   config/  — settings, URL root     │
+└─────────────────────┘       │   apps/    — one Django app per     │
+                               │             bounded module          │
+                               │   common/  — cross-cutting infra    │
+                               │             (logging, middleware,   │
+                               │             error envelope)         │
+                               └──┬──────────┬──────────┬───────────┘
+                                  │          │          │
+                          ┌───────▼──┐ ┌─────▼────┐ ┌───▼──────────┐
+                          │PostgreSQL│ │  Redis    │ │ S3-compatible │
+                          │(+pgvector│ │(cache,    │ │ object storage│
+                          │for RAG   │ │Celery     │ │ (MinIO local, │
+                          │embeddings│ │broker/    │ │ real S3 in    │
+                          │)         │ │result     │ │ deployment)   │
+                          │          │ │backend)   │ │               │
+                          └──────────┘ └─────┬─────┘ └───────────────┘
+                                              │
+                                       ┌──────▼───────┐
+                                       │ celery-worker │
+                                       │ (OCR, extract,│
+                                       │ embed, notify,│
+                                       │ webhook)      │
+                                       └───────────────┘
 ```
 
 ## Module boundaries
@@ -37,18 +58,20 @@ yet implemented — lands in the async-processing phase). No microservices.
 Each bounded piece of the product is its own Django app under
 `backend/apps/`, not a separate service:
 
-| App | Responsibility | Status |
-|---|---|---|
-| `apps.health` | Liveness/readiness probes | Implemented (Phase 0B) |
-| `apps.accounts` | Custom user model, JWT auth (login/refresh/logout/session) | Implemented (Phase 2A backend, Phase 2B frontend) |
-| `apps.workspaces` | Workspace isolation, membership, RBAC | Implemented (Phase 2A backend; frontend selector/nav gating in Phase 2B — membership-management UI itself still backend-only) |
-| `apps.audit` | Immutable audit-event log | Implemented (Phase 2A) |
-| `apps.documents` | Upload, storage, parsing/OCR orchestration | Planned (Phase 3–4) |
-| `apps.extraction` | Structured extraction, confidence, validation, review | Planned (Phase 5) |
-| `apps.assistant` | Semantic indexing, RAG Q&A with citations | Planned (Phase 6) |
-| `apps.workflows` | Approval/automation workflow engine + builder | Planned (Phase 7) |
-| `apps.integrations` | Webhooks, notifications, audit trail | Planned (Phase 8) |
-| `apps.analytics` | Operational analytics | Planned (Phase 9) |
+| App | Responsibility |
+|---|---|
+| `apps.health` | Liveness/readiness probes |
+| `apps.accounts` | Custom user model (login by email), JWT auth |
+| `apps.workspaces` | Workspace isolation, membership, RBAC, workspace settings (notification prefs, processing rules, retention) |
+| `apps.documents` | Upload, secure S3-compatible storage, list/archive/delete |
+| `apps.processing` | Async pipeline: digital-text extraction, per-page OCR routing, classification (Celery) |
+| `apps.extraction` | Structured field extraction, confidence scoring, validation issues, human correction |
+| `apps.assistant` | Semantic chunking/indexing (pgvector), RAG Q&A with citations |
+| `apps.workflows` | Visual approval/automation workflow engine (nodes, edges, versioned runs) |
+| `apps.approvals` | Approval-request lifecycle (assignment, comments, expiration, idempotent decisions) |
+| `apps.notifications` | In-app notifications, signed/idempotent webhook delivery, log-only email adapter |
+| `apps.audit` | Immutable, read-only audit-event log (no mutation path through any public API) |
+| `apps.analytics` | Workspace-scoped operational aggregation over the modules above (no models of its own) |
 
 Cross-cutting infrastructure — correlation-ID middleware, structured
 logging, the stable API error envelope — lives in `backend/common/` and is
@@ -60,7 +83,7 @@ non-negotiable rule keeping business logic out of views/serializers/tasks
 
 See [ADR-0001](adr/0001-modular-monolith.md) for the full reasoning.
 Short version: at this project's actual scale (a single team, a bounded
-demo domain, no independent-scaling requirement that's been demonstrated),
+demo domain, no independently-demonstrated scaling requirement),
 microservices would add deployment/operational complexity — network
 boundaries, distributed transactions, service discovery — without a
 matching benefit. Module boundaries are enforced by Django app boundaries
@@ -86,23 +109,106 @@ needs independent scaling.
 
 ## Background processing
 
-Not implemented yet (Phase 0D scope is infrastructure only). The plan,
-per the async-processing phase: Celery workers consume from Redis for
-OCR, extraction, embedding, and notification/webhook delivery — anything
-that shouldn't block an HTTP request. Tasks must be idempotent (retrying
-a task that partially completed must not double-process a document or
-double-send a notification) and must only retry genuinely retryable
-failures (a validation failure is not retried indefinitely).
+Celery workers (a dedicated `celery-worker` Docker Compose service,
+consuming from Redis as broker and result backend) run everything that
+must not block an HTTP request: document processing (text
+extraction/OCR/classification), RAG embedding, and notification/webhook
+delivery. Every task is idempotent (re-running one that partially
+completed does not double-process a document or double-send a
+notification); only genuinely retryable failures (provider timeout/
+unavailable) retry, with exponential backoff and a fixed attempt cap —
+validation failures (corrupt file, password-protected PDF) never retry.
+
+## The primary demo flow, end to end
+
+```mermaid
+sequenceDiagram
+    actor U as User (Reviewer)
+    participant FE as Frontend
+    participant API as Django/DRF API
+    participant Q as Celery worker
+    participant DB as PostgreSQL
+    participant S3 as Object storage
+
+    U->>FE: Upload invoice.pdf
+    FE->>API: POST /documents/ (multipart)
+    API->>API: validate (extension/size/MIME/magic-bytes/malware signature)
+    API->>S3: store file (private, no public URL)
+    API->>DB: create Document(status=uploaded)
+    API-->>Q: enqueue_processing() (on_commit)
+    API-->>FE: 201 Created
+
+    Q->>Q: extract digital text (pypdf) / OCR scanned pages
+    Q->>Q: classify document type
+    Q->>DB: extract structured fields + confidence scores
+    Q->>DB: flag low-confidence fields as ValidationIssue
+
+    U->>FE: Open review queue, correct a low-confidence total
+    FE->>API: PATCH extraction field
+    API->>DB: record FieldCorrection, recompute confidence
+
+    U->>FE: Approve document
+    FE->>API: POST /approvals/{id}/decide/ {decision: approved}
+    API->>DB: idempotent decide() — persists ApprovalRequest status
+    API->>DB: record audit event (approval.decided)
+
+    Q->>DB: chunk + embed approved document (pgvector)
+    U->>FE: Ask a RAG question
+    FE->>API: POST /assistant/conversations/{id}/messages/
+    API->>DB: vector similarity search over DocumentChunk
+    API-->>FE: grounded answer + citation (source document/page)
+
+    API->>API: trigger_webhook workflow node
+    Q->>Q: HMAC-signed webhook delivery (idempotency key, retry w/ backoff)
+    API->>DB: record audit event (workflow.action, integration.webhook)
+    API->>DB: analytics recomputed on next read (no separate write path)
+```
+
+## Entity relationships (core, simplified)
+
+```mermaid
+erDiagram
+    Workspace ||--o{ WorkspaceMembership : has
+    User ||--o{ WorkspaceMembership : has
+    Workspace ||--o{ Document : owns
+    Document ||--o| ProcessingJob : "tracked by"
+    Document ||--o| DocumentExtraction : produces
+    DocumentExtraction ||--o{ ExtractedField : contains
+    ExtractedField ||--o{ ValidationIssue : "may raise"
+    ExtractedField ||--o{ FieldCorrection : "corrected by"
+    Document ||--o{ DocumentChunk : "chunked into"
+    Workspace ||--o{ Conversation : has
+    Conversation ||--o{ Message : contains
+    Message ||--o{ AnswerCitation : cites
+    AnswerCitation }o--|| DocumentChunk : "points to"
+    Workspace ||--o{ Workflow : defines
+    Workflow ||--o{ WorkflowVersion : has
+    WorkflowVersion ||--o{ WorkflowNode : contains
+    WorkflowVersion ||--o{ WorkflowEdge : contains
+    Workflow ||--o{ WorkflowRun : "executed as"
+    WorkflowRun ||--o{ WorkflowStepRun : contains
+    Workspace ||--o{ ApprovalRequest : has
+    ApprovalRequest ||--o{ ApprovalComment : has
+    Workspace ||--o{ Notification : has
+    Workspace ||--o{ WebhookEndpoint : configures
+    WebhookEndpoint ||--o{ WebhookDelivery : has
+    Workspace ||--o{ AuditEvent : has
+```
+
+Every workspace-scoped model carries (directly or transitively) a
+`workspace` foreign key, and every workspace-scoped query filters on it
+— see the "Workspace isolation" section below and
+[`docs/adr`](adr/) for the permission model this enforces.
 
 ## Environments & configuration
 
 Environment-based Django settings (`backend/config/settings/`):
 `base` (shared, nothing environment-specific hardcoded) → `local` /
 `test` / `production`. All environment-varying values (secrets, hosts,
-database/broker URLs) come from environment variables via
+database/broker/storage URLs) come from environment variables via
 `django-environ`, never hardcoded. See
 [`backend/README.md`](../backend/README.md) for the full settings-module
-breakdown, and [`docs/adr`](adr/) for why particular choices were made.
+breakdown.
 
 Time is handled in UTC internally throughout the backend
 (`USE_TZ = True`, `TIME_ZONE = "UTC"`); conversion to a user's local time
@@ -116,34 +222,45 @@ zone is a presentation-layer concern only.
   either is unreachable. The response never includes the raw
   connection-error text — see `backend/apps/health/services.py`.
 
-## Local infrastructure
+## Local & production infrastructure
 
-`docker-compose.yml` (repo root) runs PostgreSQL (`pgvector/pgvector`
-image, ready for vector columns once a later phase needs them) and Redis,
-each with a healthcheck and a named persistent volume, plus the backend
-service itself. The frontend is not containerized — `npm run dev` already
-covers local iteration reliably. MinIO (S3-compatible storage) is
-deferred to the document-storage phase that will actually configure and
-use it.
+- `docker-compose.yml` (repo root) — local development: PostgreSQL
+  (`pgvector/pgvector` image), Redis, MinIO (+ one-shot bucket-init
+  service), the backend (dev server, bind-mounted source), and
+  `celery-worker`. The frontend runs via `npm run dev`, not
+  containerized in this file.
+- `docker-compose.prod.yml` (repo root) — production-parity manifest:
+  gunicorn (backend), a separate worker process, nginx serving the
+  built frontend, Postgres, Redis, MinIO/S3. No dev conveniences
+  (bind-mounted source, `DEBUG=True`, insecure default secrets) — every
+  secret-bearing value is required with no fallback, so an unset
+  variable fails loudly instead of running insecurely. See
+  `backend/Dockerfile.prod` and `frontend/Dockerfile` for the image
+  builds and [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) for the deployment
+  process itself.
 
 ## Observability
 
 - Structured (JSON) logs, one object per line, tagged with the request's
-  correlation ID — see `backend/common/logging.py`.
+  correlation ID — see `backend/common/logging.py`. `StructuredFormatter`
+  redacts any `extra` value whose key matches password/token/secret/
+  api_key/authorization/credential as a defense-in-depth safety net,
+  though callers remain primarily responsible for never logging those
+  fields at all.
 - Sentry wired but inert unless `SENTRY_DSN` is set
   (`backend/config/settings/production.py`).
 - Never logged: secrets, tokens, passwords, full document contents,
   extracted field values.
 
-## What this document intentionally does not cover yet
+## Further reading
 
-Authentication (sign-in, session bootstrap, protected routes, logout)
-and workspace selection/permission-aware navigation are implemented
-end-to-end (Phase 2A backend + Phase 2B frontend). Workspace membership
-*management* (invite/remove/change-role/transfer-ownership) has a
-backend API (Phase 2A) but no frontend UI yet. The extraction pipeline,
-document upload, the RAG assistant, the workflow engine, and analytics
-are all designed in their respective phase prompts but not implemented
-— this document describes verified, implemented reality plus the module
-map those phases will fill in, not a forward-looking design spec for
-all of them.
+- [`docs/security-assumptions.md`](security-assumptions.md) — trust
+  boundaries, what's enforced vs. what's a documented assumption.
+- [`docs/limitations.md`](limitations.md) — known gaps, honestly stated.
+- [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) — deployment process and
+  rollback.
+- [`docs/operations/`](operations/) — backup/recovery, release
+  checklist.
+- [`docs/portfolio-case-study.md`](portfolio-case-study.md) — the
+  product/engineering narrative for this project as a portfolio piece.
+- [`docs/adr/`](adr/) — individual architectural decisions.

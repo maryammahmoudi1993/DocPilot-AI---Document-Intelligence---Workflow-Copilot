@@ -138,20 +138,39 @@ see `backend/README.md`), not a mocked sign-in:
 `src/mocks/` (MSW) mirrors the real backend's response contract exactly
 — used by the Vitest suite, not shipped in the production build.
 
-**No live backend was reachable in the sandbox this phase was built
-in** (Docker Desktop's engine — see the root README's "Known
-limitation" — plus no Postgres/Redis running locally), so true
-end-to-end sign-in/redirect/logout/workspace-switch scenarios against a
-real Django server were not run here. That behavior is instead
-exercised at the network-mock boundary by 72 Vitest + Testing Library +
-MSW tests against the real component/hook/router tree (not a stub) —
-see `src/test/{SignIn,ProtectedRoute,WorkspaceSelector,RequireRole,
-PermissionAwareNav}.test.tsx`. Playwright (`e2e/sign-in.spec.ts`,
-`e2e/app-shell.spec.ts`) covers what's checkable without a backend:
-page rendering, keyboard operability, and (via Playwright request
-mocking, not MSW) the protected-route shell at real browser viewports.
-Run the full auth E2E suite against a real backend before relying on
-this for a live demo.
+End-to-end sign-in/redirect/logout/workspace-switch scenarios against a
+real Django server are exercised at the network-mock boundary by the
+Vitest + Testing Library + MSW suite against the real component/hook/
+router tree (not a stub) — see `src/test/{SignIn,ProtectedRoute,
+WorkspaceSelector,RequireRole,PermissionAwareNav}.test.tsx`. Playwright
+(`e2e/sign-in.spec.ts`, `e2e/app-shell.spec.ts`) covers what's checkable
+without spinning up the full stack in CI: page rendering, keyboard
+operability, and (via Playwright request mocking, not MSW) the
+protected-route shell at real browser viewports.
+`e2e/complete-demo-flow.spec.ts` is the one spec written against a real
+running backend (Docker Compose: Postgres + Redis + MinIO + Django +
+Celery worker) rather than a mock — see its own header comment for how
+to run it and [`docs/limitations.md`](../docs/limitations.md) for why
+it isn't a required CI gate yet.
+
+## Feature modules (`src/features/`)
+
+Each product area follows the same `{types,api,hooks}.ts` + page +
+`components/<area>/*` pattern: `auth`, `documents`, `processing`,
+`extraction`, `assistant` (RAG chat), `workflows` (React Flow builder),
+`approvals`, `notifications`, `audit`, `analytics`, `workspaceSettings`.
+Every `/app/*` route is lazy-loaded (`React.lazy` + a per-route
+`Suspense`) behind a route-scoped `RouteErrorBoundary` — see
+[`docs/adr/0005-route-level-code-splitting.md`](../docs/adr/0005-route-level-code-splitting.md).
+
+## Production build
+
+`Dockerfile` — multi-stage: `npm run build` in a `node` image, served
+from a minimal `nginx` image (no `node_modules`, source TypeScript, or
+Node runtime in the final image). `nginx.conf` adds SPA fallback
+(client-side routes don't 404 on a hard refresh) and long-cache headers
+for content-hashed assets vs. never-cache on `index.html`. See
+[`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md).
 
 ## Testing
 
