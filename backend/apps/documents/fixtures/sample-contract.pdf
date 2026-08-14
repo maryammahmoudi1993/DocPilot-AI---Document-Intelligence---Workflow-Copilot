@@ -1,0 +1,60 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 1027 >>
+stream
+BT /F1 11 Tf 16 TL 72 740 Td
+(SAMPLE SERVICE AGREEMENT - SYNTHETIC DEMO DATA - NOT A REAL CONTRACT) Tj
+T* () Tj
+T* (Agreement #: CTR-2026-0088) Tj
+T* (Effective Date: 2026-05-01) Tj
+T* () Tj
+T* (Party A: DocPilot Portfolio Demo Workspace \(fictional entity\)) Tj
+T* (Party B: Meridian Consulting Group LLC \(fictional entity\)) Tj
+T* () Tj
+T* (1. Scope of Services) Tj
+T* (Party B agrees to provide quarterly document-workflow consulting) Tj
+T* (services to Party A, as described in Exhibit A \(omitted - sample\).) Tj
+T* () Tj
+T* (2. Term) Tj
+T* (This agreement is effective for twelve \(12\) months from the) Tj
+T* (Effective Date above, renewing automatically unless either party) Tj
+T* (provides thirty \(30\) days written notice of non-renewal.) Tj
+T* () Tj
+T* (3. Fees) Tj
+T* (Quarterly fee: $12,500.00, payable net 30 from invoice date.) Tj
+T* () Tj
+T* (4. Signatures \(sample - not executed\)) Tj
+T* (Party A: _____________________     Date: __________) Tj
+T* (Party B: _____________________     Date: __________) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Title (Sample Service Agreement \(Synthetic Demo Data\)) /Producer (DocPilot AI sample fixtures) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+0000001390 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+1509
+%%EOF

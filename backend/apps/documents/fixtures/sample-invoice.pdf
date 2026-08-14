@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 885 >>
+stream
+BT /F1 11 Tf 16 TL 72 740 Td
+(SAMPLE INVOICE - SYNTHETIC DEMO DATA - NOT A REAL TRANSACTION) Tj
+T* () Tj
+T* (Invoice #: INV-2026-0142) Tj
+T* (Date: 2026-06-03) Tj
+T* (Vendor: Northwind Office Supply Co. \(fictional\)) Tj
+T* (Bill To: Demo Workspace, DocPilot AI Portfolio Project) Tj
+T* () Tj
+T* (Description                          Qty   Unit Price   Amount) Tj
+T* (Standing desk, adjustable             2      $410.00     $820.00) Tj
+T* (Ergonomic chair                       4      $265.00    $1,060.00) Tj
+T* (Monitor arm, dual                     4       $89.50      $358.00) Tj
+T* () Tj
+T* (Subtotal:                                              $2,238.00) Tj
+T* (Tax \(8.25%\):                                             $184.64) Tj
+T* (Total Due:                                             $2,422.64) Tj
+T* () Tj
+T* (Payment Terms: Net 30) Tj
+T* (Due Date: 2026-07-03) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Title (Sample Invoice \(Synthetic Demo Data\)) /Producer (DocPilot AI sample fixtures) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+0000001247 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+1356
+%%EOF
