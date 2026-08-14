@@ -81,6 +81,25 @@ class TestGeminiClassificationProvider:
         with pytest.raises(ValidationProcessingError):
             GeminiClassificationProvider().classify(filename="x.pdf", text_sample="")
 
+    def test_a_429_rate_limit_is_retryable_even_though_its_a_client_error(self, monkeypatch):
+        """Confirmed against the real API: Gemini reports rate-limiting
+        as a 429, which the SDK surfaces as ClientError (its whole 4xx
+        bucket) — not ServerError. Without this, a routine free-tier
+        rate limit gets misclassified as a permanent validation
+        failure and the job never retries."""
+        from google.genai import errors
+
+        client = MagicMock()
+        client.models.generate_content.side_effect = errors.ClientError(
+            429, {"error": {"message": "rate limited"}}
+        )
+        monkeypatch.setattr(
+            "apps.processing.providers.build_gemini_client", lambda: client
+        )
+
+        with pytest.raises(RetryableProcessingError):
+            GeminiClassificationProvider().classify(filename="x.pdf", text_sample="")
+
 
 class TestGetClassificationProvider:
     def test_defaults_to_the_keyword_heuristic(self, settings):
