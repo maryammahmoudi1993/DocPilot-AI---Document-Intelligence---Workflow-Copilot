@@ -145,7 +145,7 @@ describe('SignInPage — demo quick login', () => {
     renderSignIn();
 
     for (const account of DEMO_ACCOUNTS) {
-      expect(screen.getByRole('button', { name: new RegExp(account.label, 'i') })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: account.label })).toBeInTheDocument();
     }
   });
 
@@ -154,7 +154,7 @@ describe('SignInPage — demo quick login', () => {
     renderSignIn();
 
     expect(screen.queryByLabelText('Email')).toHaveValue('');
-    await user.click(screen.getByRole('button', { name: /viewer/i }));
+    await user.click(screen.getByRole('button', { name: 'Viewer' }));
 
     expect(await screen.findByText('Dashboard content')).toBeInTheDocument();
   });
