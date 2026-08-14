@@ -182,17 +182,43 @@ correlation ID (`X-Correlation-ID` request/response header — see
 `common/middleware.py` and `common/logging.py`). Never log secrets, tokens,
 passwords, full document contents, or extracted field values.
 
-## Known environment limitation (dev sandbox used to build this phase)
+## Modules beyond auth/documents
 
-In the sandbox this phase was developed in, `manage.py makemigrations
---check` hung rather than failing fast when `DATABASE_URL` pointed at an
-unreachable PostgreSQL host — the network silently dropped the connection
-instead of refusing it (Docker Desktop's engine was also unreachable from
-that same sandboxed shell, so a container-backed Postgres wasn't an
-option either). The validation commands that need a real Postgres
-connection were run with a temporary SQLite `DATABASE_URL` override
-instead, since this phase has no models to make the backend choice
-matter. This is not a code issue — a real Postgres instance (local,
-Dockerized, or a CI service container) behaves normally. Don't reach for
-the same SQLite-override workaround once real Postgres-dependent models
-exist; fix or route around the actual connectivity problem instead.
+Everything below has its own API surface, service/selector layer, and
+test suite under `apps/<name>/`. See
+[`docs/architecture-overview.md`](../docs/architecture-overview.md) for
+the full module map and how these fit together, and each app's own
+`views.py`/`urls.py` (or `/api/schema/docs/` at runtime) for the
+authoritative endpoint list — this README intentionally doesn't
+duplicate the OpenAPI schema by hand.
+
+| App | What it adds |
+|---|---|
+| `apps.processing` | Celery pipeline: digital-text extraction (pypdf), per-page OCR routing, deterministic keyword classification. `ProcessingJob` state machine with normalized retryable-vs-non-retryable errors and exponential backoff. |
+| `apps.extraction` | Structured field extraction, confidence scoring, validation issues, human correction (`FieldCorrection`), workspace-scoped review queue. |
+| `apps.assistant` | Document chunking + embedding (pgvector), conversation/message history, grounded RAG answers with citations back to source chunks. Mock embedding/LLM provider only — no real API key configured (see `docs/limitations.md`). |
+| `apps.workflows` | Versioned visual workflow definitions (nodes/edges), execution runs, and the `request_approval`/`send_notification`/`trigger_webhook` action nodes that call into `apps.approvals`/`apps.notifications`. |
+| `apps.approvals` | `ApprovalRequest` lifecycle — assignment, comments, expiration, idempotent role-based `decide()` (repeating a decision is a safe no-op; a conflicting decision is rejected). |
+| `apps.notifications` | In-app notifications, `WebhookEndpoint` (Fernet-encrypted secrets, never returned by the API), HMAC-SHA256-signed idempotent `WebhookDelivery` via a retrying Celery task, log-only email adapter. |
+| `apps.audit` | Read-only, immutable audit-event log — no update/delete endpoint exists anywhere in this app. |
+| `apps.analytics` | No models of its own — workspace-scoped aggregation queries over the apps above (dashboard summary, processing trends, review rate, workflow success rate, average approval duration). |
+
+## Malware scanning
+
+`apps/documents/scanning.py` — a `MalwareScanProvider` interface wired
+into `apps.documents.services.create_document`, ahead of the storage
+write. The default provider (`DOCUMENT_MALWARE_SCAN_PROVIDER=eicar`)
+checks for the industry-standard EICAR antivirus test signature — no
+paid service, safe in unit tests — and is not a general malware scanner;
+see [`docs/security-assumptions.md`](../docs/security-assumptions.md)
+for what it does and doesn't claim to catch, and the interface itself
+for how a real AV engine would be wired in behind it.
+
+## Production
+
+`Dockerfile.prod` builds the gunicorn-served production image (also used
+for the Celery worker, with a different container command); see
+[`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) for the full release
+process, required environment variables, and rollback procedure.
+`config.settings.production` fails fast if `DJANGO_SECRET_KEY`,
+`DJANGO_ALLOWED_HOSTS`, or `INTEGRATION_SECRET_KEY` are unset.
