@@ -152,6 +152,30 @@ CELERY_TASK_TRACK_STARTED = True
 # docker-compose.yml). See apps/processing/providers.py.
 DOCUMENT_OCR_PROVIDER = env.str("DOCUMENT_OCR_PROVIDER", default="mock")
 
+# "keyword" (deterministic heuristic, the default — no network, no
+# cost, safe in tests) or "gemini" (real Google Gemini call — costs
+# real money per document, requires GEMINI_API_KEY). See
+# apps/processing/providers.py.
+DOCUMENT_CLASSIFICATION_PROVIDER = env.str("DOCUMENT_CLASSIFICATION_PROVIDER", default="keyword")
+
+# "regex" (deterministic `Label: value` line matcher, the default) or
+# "gemini" (real Google Gemini structured-extraction call). See
+# apps/extraction/providers.py.
+DOCUMENT_EXTRACTION_PROVIDER = env.str("DOCUMENT_EXTRACTION_PROVIDER", default="regex")
+
+# Required only when DOCUMENT_CLASSIFICATION_PROVIDER or
+# DOCUMENT_EXTRACTION_PROVIDER is "gemini" — get one at
+# https://aistudio.google.com/apikey. Never logged, never returned by
+# any API response.
+GEMINI_API_KEY = env.str("GEMINI_API_KEY", default="")
+# "-latest" floating alias (Google's own recommended default) rather
+# than a dated model id — resolves to whatever Google currently serves
+# as its fast-tier model, so this doesn't need updating every time a
+# specific dated Gemini model is retired. Override to a pinned model
+# (e.g. "gemini-3.5-flash") if reproducible-across-time output matters
+# more than always running the current model.
+GEMINI_MODEL = env.str("GEMINI_MODEL", default="gemini-flash-latest")
+
 # A PDF page yielding fewer extracted characters than this is treated as
 # not having a usable digital text layer (i.e. scanned) and routed to
 # OCR instead. Deliberately small and documented rather than tuned

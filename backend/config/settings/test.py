@@ -46,6 +46,13 @@ LOGGING_CONFIG = None  # keep test output quiet; re-enable per-test if needed
 # in-test retry simulation entirely (see test_tasks.py's retry tests).
 CELERY_TASK_ALWAYS_EAGER = True
 DOCUMENT_OCR_PROVIDER = "mock"
+# Pinned regardless of any GEMINI_API_KEY / *_PROVIDER value a
+# developer's local .env happens to have set — the project rule is that
+# unit tests never call a paid provider, and individual tests still
+# override these via the `settings` fixture when they need to exercise
+# the Gemini-provider code path against a monkeypatched client.
+DOCUMENT_CLASSIFICATION_PROVIDER = "keyword"
+DOCUMENT_EXTRACTION_PROVIDER = "regex"
 
 # Fixed test-only Fernet key (see apps/notifications/crypto.py) — never
 # used outside test settings.
